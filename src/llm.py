@@ -83,9 +83,6 @@ class LLM:
         if value != "-1":
             parsed_value = value
 
-        if ";" in value:
-            parsed_value = self.handle_plural_values(value)
-
         if field in self._json.keys():
             self._json[field].append(parsed_value)
         else:
@@ -93,29 +90,6 @@ class LLM:
 
         return
 
-    def handle_plural_values(self, plural_value: str):
-        """
-        This method handles plural values.
-        Takes in strings of the form 'value1; value2; value3; ...; valueN'
-        returns a list with the respective values -> [value1, value2, value3, ..., valueN]
-        """
-        if ";" not in plural_value:
-            raise ValueError(
-                f"Value is not plural, doesn't have ; separator, Value: {plural_value}"
-            )
-
-        print(
-            f"\t[LOG]: Formatting plural values for JSON, [For input {plural_value}]..."
-        )
-        values = plural_value.split(";")
-
-        # Remove trailing leading whitespace
-        for i in range(len(values)):
-            values[i] = values[i].lstrip()
-
-        print(f"\t[LOG]: Resulting formatted list of values: {values}")
-
-        return values
 
     def get_data(self):
         return self._json
