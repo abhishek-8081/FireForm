@@ -202,6 +202,17 @@ class TestFormEndpoints:
         })
         assert resp.status_code == 404
 
+    def test_fill_form_template_file_not_found(self, client, mock_controller):
+        tpl_id = self._seed_template(client, mock_controller)
+        mock_controller["form_ctrl"].fill_form.side_effect = FileNotFoundError("PDF template not found")
+
+        resp = client.post("/forms/fill", json={
+            "template_id": tpl_id,
+            "input_text": "some text",
+        })
+        assert resp.status_code == 500
+        assert "PDF template not found" in resp.json()["error"]
+
     def test_fill_form_validates_body(self, client):
         """Missing required fields → 422."""
         resp = client.post("/forms/fill", json={})
