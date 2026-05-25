@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, field_validator
 
 class FormFill(BaseModel):
@@ -7,7 +5,7 @@ class FormFill(BaseModel):
     input_text: str
     # Optional Ollama model override for this fill; falls back to OLLAMA_MODEL.
     # Not persisted (no DB column) — excluded before building FormSubmission.
-    model: Optional[str] = None
+    model: str | None = None
 
     @field_validator("input_text")
     def validate_input_text(cls, value):
