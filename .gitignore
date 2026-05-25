@@ -23,3 +23,6 @@ src/inputs/*.pdf
 
 # Electron build artifacts
 frontend/release/
+
+# Local Claude Code instructions
+CLAUDE.md
