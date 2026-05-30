@@ -3,6 +3,8 @@ import os
 import requests
 from requests.exceptions import Timeout, RequestException
 
+from app.core.config import OLLAMA_HOST, OLLAMA_MODEL
+
 
 class LLM:
     def __init__(self, transcript_text: str=None, target_fields: list=None, json_dict: dict=None, model: str=None):
@@ -31,9 +33,8 @@ class LLM:
         total_fields = len(self._target_fields)
         for i, (field, field_type) in enumerate(self._target_fields.items(), 1):
             prompt = self.build_prompt(field, field_type if isinstance(field_type, str) else "string")
-            ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-            ollama_url = f"{ollama_host}/api/generate"
-            ollama_model = self._model or os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+            ollama_url = f"{OLLAMA_HOST}/api/generate"
+            ollama_model = self._model or OLLAMA_MODEL
 
             payload = {
                 "model": ollama_model,

@@ -1,19 +1,19 @@
-import os
-
 import requests
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlmodel import Session
-from api.deps import get_db
-from api.schemas.forms import (
+
+from app.api.deps import get_db
+from app.api.schemas.forms import (
     FormFill,
     FormFillResponse,
     ModelsResponse,
     TranscriptionResponse,
 )
-from api.db.repositories import create_form, get_template
-from api.db.models import FormSubmission
-from api.errors.base import AppError
-from src.controller import Controller
+from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, WHISPER_HOST
+from app.core.errors.base import AppError
+from app.db.repositories import create_form, get_template
+from app.models import FormSubmission
+from app.services.controller import Controller
 
 router = APIRouter(prefix="/forms", tags=["forms"])
 
@@ -48,12 +48,11 @@ def list_models():
     """List the Whisper-independent extraction models available in the local
     Ollama instance, plus the configured default. Used by the Fill Form UI's
     model picker. Falls back to just the default if Ollama is unreachable."""
-    default_model = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
-    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+    default_model = OLLAMA_MODEL
 
     models: list[str] = []
     try:
-        response = requests.get(f"{ollama_host}/api/tags", timeout=10)
+        response = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=10)
         response.raise_for_status()
         models = [m["name"] for m in response.json().get("models", []) if m.get("name")]
     except requests.exceptions.RequestException:
@@ -75,8 +74,7 @@ def transcribe(audio: UploadFile = File(...)):
     audio is streamed straight through to the local STT service and never
     persisted — no PII leaves the machine.
     """
-    whisper_host = os.getenv("WHISPER_HOST", "http://localhost:9000").rstrip("/")
-    whisper_url = f"{whisper_host}/asr"
+    whisper_url = f"{WHISPER_HOST}/asr"
 
     files = {
         "audio_file": (

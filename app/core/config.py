@@ -1,0 +1,47 @@
+"""Central configuration.
+
+Single source of truth for paths, the database URL, external service hosts and
+CORS. Read environment once here so the rest of the app imports settings instead
+of calling os.getenv() in scattered places.
+"""
+
+import os
+from pathlib import Path
+
+# Repo root. config.py lives at app/core/config.py -> parents[2] is the repo root.
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+# --- App metadata ---------------------------------------------------------
+APP_TITLE = "FireForm API"
+APP_VERSION = "1.1.0"
+
+# --- Runtime data paths ---------------------------------------------------
+# Uploaded templates and generated PDFs. Project-relative paths the API echoes
+# back to the client are resolved against BASE_DIR (the "inside the project"
+# guard in the templates routes). Override the data dir with FIREFORM_DATA_DIR.
+DATA_DIR = Path(os.getenv("FIREFORM_DATA_DIR", BASE_DIR / "data")).resolve()
+
+# Directory new uploads land in, as a project-relative string (was "src/inputs"
+# before the restructure). Override with FIREFORM_TEMPLATE_DIR.
+DEFAULT_TEMPLATE_DIR = os.getenv("FIREFORM_TEMPLATE_DIR", "data/inputs")
+
+# --- Database -------------------------------------------------------------
+# Keep the SQLite file in the user's home so it survives container rebuilds.
+_APP_HOME = Path(os.path.expanduser("~")) / ".fireform"
+_APP_HOME.mkdir(parents=True, exist_ok=True)
+DB_PATH = Path(os.getenv("FIREFORM_DB_PATH", _APP_HOME / "fireform.db"))
+DATABASE_URL = f"sqlite:///{DB_PATH}"
+DB_ECHO = os.getenv("FIREFORM_DB_ECHO", "true").lower() == "true"
+
+# --- External services ----------------------------------------------------
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+WHISPER_HOST = os.getenv("WHISPER_HOST", "http://localhost:9000").rstrip("/")
+
+# --- CORS -----------------------------------------------------------------
+_DEFAULT_ORIGINS = "http://127.0.0.1:5173,http://localhost:5173"
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGINS", _DEFAULT_ORIGINS).split(",")
+    if origin.strip()
+]

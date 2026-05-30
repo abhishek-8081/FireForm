@@ -1,4 +1,4 @@
-from src.file_manipulator import FileManipulator
+from app.services.file_manipulator import FileManipulator
 
 class Controller:
     def __init__(self):

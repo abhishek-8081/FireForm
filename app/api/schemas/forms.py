@@ -4,7 +4,6 @@ class FormFill(BaseModel):
     template_id: int
     input_text: str
     # Optional Ollama model override for this fill; falls back to OLLAMA_MODEL.
-    # Not persisted (no DB column) — excluded before building FormSubmission.
     model: str | None = None
 
     @field_validator("input_text")

@@ -1,5 +1,5 @@
 from pdfrw import PdfReader, PdfWriter
-from src.llm import LLM
+from app.services.llm import LLM
 from datetime import datetime
 
 

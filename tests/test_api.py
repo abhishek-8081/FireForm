@@ -7,7 +7,7 @@ All heavy dependencies (LLM, commonforms, filesystem) are mocked via conftest.
 import pytest
 from sqlmodel import select
 
-from api.db.models import Template, FormSubmission
+from app.models import Template, FormSubmission
 
 
 # ═══════════════════════════════════════════════════════════════════════════
