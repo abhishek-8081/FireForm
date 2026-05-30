@@ -67,10 +67,8 @@ shell:
 
 # Start the FastAPI server inside the running container
 run:
-	docker compose exec app uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+	docker compose exec app uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-exec:
-	docker compose exec app python3 src/main.py
 
 pull-model:
 	docker compose exec ollama ollama pull $(OLLAMA_MODEL)

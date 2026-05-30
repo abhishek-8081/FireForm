@@ -43,7 +43,7 @@ jobs:
         working-directory: .
         shell: bash
         run: |
-          pyinstaller --name api-backend --onefile api/main.py
+          pyinstaller --name api-backend --onefile app/main.py
           mkdir -p frontend/bin
           cp dist/api-backend* frontend/bin/
 
