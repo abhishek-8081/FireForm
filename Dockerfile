@@ -18,11 +18,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# All imports use api.*, src.* which require the root to be on the path
+# All imports use the app.* package, which requires the root on the path
 ENV PYTHONPATH=/app
 
 # Expose FastAPI port
 EXPOSE 8000
 
 # Start the FastAPI server (not tail -f /dev/null which does nothing)
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

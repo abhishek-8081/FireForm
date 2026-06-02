@@ -5,21 +5,22 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlmodel import Session
-from api.deps import get_db
-from api.schemas.templates import (
+
+from app.api.deps import get_db
+from app.api.schemas.templates import (
     TemplateCreate,
     TemplateResponse,
     TemplateUploadResponse,
     MakeFillableRequest,
     MakeFillableResponse,
 )
-from api.db.repositories import create_template, list_templates
-from api.db.models import Template
-from src.controller import Controller
+from app.core.config import BASE_DIR, DEFAULT_TEMPLATE_DIR
+from app.db.repositories import create_template, list_templates
+from app.models import Template
+from app.services.controller import Controller
 
 router = APIRouter(prefix="/templates", tags=["templates"])
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TEMPLATE_DIR = "src/inputs"
+PROJECT_ROOT = BASE_DIR
 
 
 def _resolve_target_directory(directory: str) -> Path:

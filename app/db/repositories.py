@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from api.db.models import Template, FormSubmission
+from app.models import Template, FormSubmission
 
 # Templates
 def create_template(session: Session, template: Template) -> Template:

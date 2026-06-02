@@ -1,6 +1,6 @@
 import os
-from src.filler import Filler
-from src.llm import LLM
+from app.services.filler import Filler
+from app.services.llm import LLM
 
 
 class FileManipulator:
