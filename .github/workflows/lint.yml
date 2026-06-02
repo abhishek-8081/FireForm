@@ -26,4 +26,4 @@ jobs:
 
       - name: Run linter
         run: |
-          ruff check src/ --output-format=github
+          ruff check app/ --output-format=github
