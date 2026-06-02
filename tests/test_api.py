@@ -4,7 +4,6 @@ Covers every endpoint and the full upload → template → fill pipeline.
 All heavy dependencies (LLM, commonforms, filesystem) are mocked via conftest.
 """
 
-import pytest
 from sqlmodel import select
 
 from app.models import Template, FormSubmission
