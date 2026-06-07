@@ -22,6 +22,7 @@ COPY --from=builder /install /usr/local
 # Copy only app code, not data/ temp/ tests/ docs/ etc.
 COPY app/ ./app/
 COPY requirements.txt .
+COPY docker/entrypoint.sh /entrypoint.sh
 
 ENV PYTHONPATH=/app
 
@@ -30,6 +31,7 @@ RUN mkdir -p /data/db /data/uploads && chmod +x /entrypoint.sh
 
 EXPOSE 8000
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "app.main:app", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
