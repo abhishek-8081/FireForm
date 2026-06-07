@@ -125,7 +125,7 @@ class TestTemplateEndpoints:
         # Point the upload directory inside tmp_path (which is inside the project
         # for the path-safety check — we monkeypatch the check).
         monkeypatch.setattr(
-            "api.routes.templates.PROJECT_ROOT",
+            "app.api.routes.templates.PROJECT_ROOT",
             tmp_path,
         )
         resp = client.post(
@@ -234,7 +234,7 @@ class TestFormEndpoints:
             captured["files"] = files
             return fake_response
 
-        monkeypatch.setattr("api.routes.forms.requests.post", fake_post)
+        monkeypatch.setattr("app.api.routes.forms.requests.post", fake_post)
 
         audio = ("audio", ("recording.wav", io.BytesIO(b"RIFFfake"), "audio/wav"))
         resp = client.post("/forms/transcribe", files=[audio])
@@ -252,7 +252,7 @@ class TestFormEndpoints:
         fake_response = MagicMock()
         fake_response.json.return_value = {"models": [{"name": "qwen2.5:3b"}, {"name": "mistral:latest"}]}
         fake_response.raise_for_status.return_value = None
-        monkeypatch.setattr("api.routes.forms.requests.get", lambda *a, **k: fake_response)
+        monkeypatch.setattr("app.api.routes.forms.requests.get", lambda *a, **k: fake_response)
         monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:1.5b")
 
         resp = client.get("/forms/models")
@@ -269,7 +269,7 @@ class TestFormEndpoints:
         def boom(*a, **k):
             raise requests.exceptions.ConnectionError("down")
 
-        monkeypatch.setattr("api.routes.forms.requests.get", boom)
+        monkeypatch.setattr("app.api.routes.forms.requests.get", boom)
         monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:1.5b")
 
         resp = client.get("/forms/models")
@@ -296,7 +296,7 @@ class TestFormEndpoints:
         def fake_post(*args, **kwargs):
             raise requests.exceptions.ConnectionError("no service")
 
-        monkeypatch.setattr("api.routes.forms.requests.post", fake_post)
+        monkeypatch.setattr("app.api.routes.forms.requests.post", fake_post)
 
         audio = ("audio", ("recording.wav", io.BytesIO(b"data"), "audio/wav"))
         resp = client.post("/forms/transcribe", files=[audio])
@@ -315,7 +315,7 @@ class TestE2EPipeline:
 
     def test_full_flow(self, client, mock_controller, pdf_upload, tmp_path, monkeypatch, db):
         # -- Step 1: Upload a PDF --
-        monkeypatch.setattr("api.routes.templates.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr("app.api.routes.templates.PROJECT_ROOT", tmp_path)
         upload_resp = client.post(
             "/templates/upload",
             files=[pdf_upload],
