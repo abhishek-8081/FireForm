@@ -1,0 +1,144 @@
+# Template & Configuration schemas
+
+TemplateSummary:
+  type: object
+  properties:
+    template_id:
+      type: string
+      format: uuid
+    form_type:
+      $ref: "../schemas/enums.yaml#/FormType"
+    display_name:
+      type: string
+    jurisdiction:
+      type: string
+      description: Jurisdiction code (e.g. "US-Federal", "US-CA", "US-GA")
+    agency_type:
+      type: string
+    version:
+      type: string
+    last_updated:
+      type: string
+      format: date
+    field_count:
+      type: integer
+    status:
+      type: string
+      enum:
+        - active
+        - legacy
+        - draft
+
+CreateTemplateRequest:
+  type: object
+  required:
+    - form_type
+    - display_name
+    - jurisdiction
+    - fields
+    - field_mappings_from_canonical
+  properties:
+    form_type:
+      type: string
+      description: Unique form type identifier
+    display_name:
+      type: string
+    jurisdiction:
+      type: string
+    agency_type:
+      type: string
+    fields:
+      type: array
+      items:
+        $ref: "#/TemplateField"
+    field_mappings_from_canonical:
+      type: object
+      additionalProperties:
+        type: string
+      description: |
+        Mapping from canonical FireForm JSON paths to this template's field names.
+        Key = canonical path (e.g. "fire.cause_category"), value = template field name.
+    source_standard:
+      type: string
+      nullable: true
+      description: Reference to the source standard (e.g. "NERIS v2.0", "NFIRS 5.0")
+    pdf_template_ref:
+      type: string
+      nullable: true
+      description: Reference to the PDF template file
+
+Template:
+  allOf:
+    - type: object
+      properties:
+        template_id:
+          type: string
+          format: uuid
+        version:
+          type: string
+        last_updated:
+          type: string
+          format: date
+        field_count:
+          type: integer
+        status:
+          type: string
+          enum: [active, legacy, draft]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    - $ref: "#/CreateTemplateRequest"
+
+TemplateField:
+  type: object
+  required:
+    - field_name
+    - field_type
+    - required
+  properties:
+    field_name:
+      type: string
+      description: Field identifier within this template
+    field_type:
+      type: string
+      enum:
+        - string
+        - integer
+        - number
+        - boolean
+        - date
+        - datetime
+        - time
+        - enum
+        - text
+        - array
+      description: Data type of the field
+    required:
+      type: boolean
+    description:
+      type: string
+      nullable: true
+    max_length:
+      type: integer
+      nullable: true
+    min_value:
+      type: number
+      nullable: true
+    max_value:
+      type: number
+      nullable: true
+    allowed_values:
+      type: array
+      items:
+        type: string
+      nullable: true
+      description: Valid values for enum fields
+    canonical_mapping:
+      type: string
+      description: JSON path in canonical FireForm schema this field maps from
+    default_value:
+      nullable: true
+      description: Default value if canonical field is null
