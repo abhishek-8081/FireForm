@@ -29,3 +29,4 @@ frontend/release/
 CLAUDE.md
 
 *temp/
+*.env*
