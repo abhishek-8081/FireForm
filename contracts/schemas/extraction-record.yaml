@@ -27,7 +27,7 @@ ExtractionCompleted:
     - extract_id
     - input_id
     - status
-    - canonical_incident
+    - incident_contract
   properties:
     extract_id:
       type: string
@@ -47,8 +47,8 @@ ExtractionCompleted:
       description: LLM model that performed the extraction
     processing_time_seconds:
       type: number
-    canonical_incident:
-      $ref: "canonical-incident.yaml#/CanonicalIncident"
+    incident_contract:
+      $ref: "incident-contract.yaml#/IncidentContract"
     corrections:
       type: array
       description: Audit trail of manual corrections applied via PATCH
@@ -97,7 +97,7 @@ ExtractionProcessing:
       type: string
       nullable: true
     partial_result:
-      $ref: "canonical-incident.yaml#/CanonicalIncident"
+      $ref: "incident-contract.yaml#/IncidentContract"
 
 ValidationResult:
   type: object

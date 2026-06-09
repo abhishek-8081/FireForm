@@ -94,8 +94,8 @@ IncidentRecordFull:
     - $ref: "#/IncidentRecord"
     - type: object
       properties:
-        canonical_incident:
-          $ref: "canonical-incident.yaml#/CanonicalIncident"
+        incident_contract:
+          $ref: "incident-contract.yaml#/IncidentContract"
         forms:
           type: array
           items:

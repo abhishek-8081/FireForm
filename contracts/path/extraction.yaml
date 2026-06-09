@@ -129,9 +129,9 @@ extract_by_id:
                   input_id: "550e8400-e29b-41d4-a716-446655440001"
                   status: "completed"
                   completed_at: "2024-07-15T14:31:05Z"
-                  canonical_incident:
+                  incident_contract:
                     schema_version: "1.1.0"
-                    schema_name: "fireform_canonical_incident"
+                    schema_name: "fireform_incident_contract"
                     extraction_metadata:
                       extract_id: "550e8400-e29b-41d4-a716-446655440020"
                       confidence_score: 0.91
@@ -179,7 +179,7 @@ extract_by_id:
       content:
         application/merge-patch+json:
           schema:
-            $ref: "../schemas/canonical-incident.yaml#/CanonicalIncident"
+            $ref: "../schemas/incident-contract.yaml#/IncidentContract"
           example:
             fire:
               estimated_damage_usd: 250000

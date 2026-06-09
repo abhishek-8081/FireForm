@@ -1,7 +1,7 @@
 # Canonical FireForm Incident Schema
 # This is the master superset schema single source of truth for all downstream forms
 
-CanonicalIncident:
+IncidentContract:
   type: object
   description: |
     The canonical FireForm incident data model. This is the superset schema containing
@@ -16,7 +16,7 @@ CanonicalIncident:
       type: string
       description: Schema name identifier
       enum:
-        - fireform_canonical_incident
+        - fireform_incident_contract
 
     extraction_metadata:
       $ref: "#/ExtractionMetadata"
