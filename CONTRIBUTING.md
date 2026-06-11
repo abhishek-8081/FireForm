@@ -48,3 +48,5 @@ Join our Discord server to ask questions, discuss issues, and coordinate work wi
 ## 🛠️ Local Development Setup
 
 See the [Setup Guide](docs/SETUP.md) for the full walkthrough: prerequisites, running the backend with Docker, testing endpoints via Swagger UI, day-to-day commands, and troubleshooting.
+
+Before writing code, read the [Project Structure](docs/PROJECT_STRUCTURE.md) guide — it explains how the codebase is organized and where new code should go.
