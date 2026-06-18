@@ -53,7 +53,6 @@ services:
               "--access-logfile", "-",
               "--error-logfile", "-"]
     volumes:
-      - fireform_db:/data/db
       - fireform_uploads:/data/uploads
     ports:
       - "${APP_PORT}:8000"
@@ -61,11 +60,11 @@ services:
       - PYTHONUNBUFFERED=1
       - CUDA_VISIBLE_DEVICES=
       - PYTHONPATH=/app
+      - DATABASE_URL=${DATABASE_URL}
       - OLLAMA_HOST=${OLLAMA_HOST}
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT}
       - OLLAMA_MODEL=${OLLAMA_MODEL}
       - WHISPER_HOST=${WHISPER_HOST}
-      - FIREFORM_DB_PATH=/data/db/fireform.db
       - FIREFORM_DATA_DIR=/data/uploads
       - FIREFORM_TEMPLATE_DIR=/data/uploads
       - FIREFORM_DB_ECHO=false
@@ -79,8 +78,6 @@ volumes:
   ollama_data:
     driver: local
   whisper_models:
-    driver: local
-  fireform_db:
     driver: local
   fireform_uploads:
     driver: local
