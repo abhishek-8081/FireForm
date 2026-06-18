@@ -1,4 +1,23 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fireform-postgres
+    environment:
+      POSTGRES_USER: fireform
+      POSTGRES_PASSWORD: fireform
+      POSTGRES_DB: fireform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - fireform-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fireform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   ollama:
     image: ollama/ollama:latest
     container_name: fireform-ollama
@@ -41,6 +60,8 @@ services:
       dockerfile: docker/dev/Dockerfile
     container_name: fireform-app
     depends_on:
+      postgres:
+        condition: service_healthy
       ollama:
         condition: service_healthy
       whisper:
@@ -49,7 +70,6 @@ services:
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - ../..:/app
-      - fireform_db:/data/db
       - fireform_uploads:/data/uploads
     ports:
       - "${APP_PORT:-8000}:8000"
@@ -57,11 +77,11 @@ services:
       - PYTHONUNBUFFERED=1
       - CUDA_VISIBLE_DEVICES=
       - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://fireform:fireform@postgres:5432/fireform
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-300}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
       - WHISPER_HOST=${WHISPER_HOST:-http://whisper:9000}
-      - FIREFORM_DB_PATH=/data/db/fireform.db
       - FIREFORM_DATA_DIR=/data/uploads
       - FIREFORM_TEMPLATE_DIR=/data/uploads
       - FIREFORM_DB_ECHO=${FIREFORM_DB_ECHO:-true}
@@ -70,11 +90,11 @@ services:
       - fireform-network
 
 volumes:
+  postgres_data:
+    driver: local
   ollama_data:
     driver: local
   whisper_models:
-    driver: local
-  fireform_db:
     driver: local
   fireform_uploads:
     driver: local
