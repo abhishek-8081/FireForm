@@ -26,11 +26,10 @@ DATA_DIR = Path(os.getenv("FIREFORM_DATA_DIR", BASE_DIR / "data")).resolve()
 DEFAULT_TEMPLATE_DIR = os.getenv("FIREFORM_TEMPLATE_DIR", "data/inputs")
 
 # --- Database -------------------------------------------------------------
-# Keep the SQLite file in the user's home so it survives container rebuilds.
-_APP_HOME = Path(os.path.expanduser("~")) / ".fireform"
-_APP_HOME.mkdir(parents=True, exist_ok=True)
-DB_PATH = Path(os.getenv("FIREFORM_DB_PATH", _APP_HOME / "fireform.db"))
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://fireform:fireform@localhost:5432/fireform",
+)
 DB_ECHO = os.getenv("FIREFORM_DB_ECHO", "true").lower() == "true"
 
 # --- External services ----------------------------------------------------
