@@ -5,8 +5,9 @@ Add new feature routers here; main.py only mounts this one router.
 
 from fastapi import APIRouter
 
-from app.api.routes import forms, templates
+from app.api.routes import forms, templates, weather
 
 api_router = APIRouter()
 api_router.include_router(templates.router)
 api_router.include_router(forms.router)
+api_router.include_router(weather.router)
