@@ -15,3 +15,9 @@ class Controller:
 
     def get_weather(self, latitude: float, longitude: float, start_date: str, end_date: str, hourly_fields: list = None):
         return self.external_apis_coordinator.get_weather(latitude, longitude, start_date, end_date, hourly_fields)
+
+    def get_postal_code(self, country: str, postal_code: str):
+        return self.external_apis_coordinator.get_postal_code(country, postal_code)
+        
+    def get_location(self, country: str, city: str):
+        return self.external_apis_coordinator.get_location(country, city)
