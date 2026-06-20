@@ -13,5 +13,5 @@ class Controller:
     def prepare_fillable(self, pdf_path: str):
         return self.file_manipulator.prepare_fillable(pdf_path)
 
-    def get_weather(self, latitude: float, longitude: float, hourly_fields: list = None):
-        return self.external_apis_coordinator.get_weather(latitude, longitude, hourly_fields=hourly_fields)
+    def get_weather(self, latitude: float, longitude: float, start_date: str, end_date: str, hourly_fields: list = None):
+        return self.external_apis_coordinator.get_weather(latitude, longitude, start_date, end_date, hourly_fields)

@@ -23,6 +23,8 @@ ALL_HOURLY_FIELDS = [
 def get_weather_forecast(
     latitude: float,
     longitude: float,
+    start_date: str,
+    end_date: str,
     fields: str | None = None,
 ):
     """
@@ -36,7 +38,7 @@ def get_weather_forecast(
     controller = Controller()
     try:
         requested = [f.strip() for f in fields.split(",") if f.strip()] if fields else []
-        weather_data = controller.get_weather(latitude, longitude, hourly_fields=requested)
+        weather_data = controller.get_weather(latitude, longitude, start_date, end_date, hourly_fields=requested)
         return weather_data
     except Exception as e:
         raise AppError(str(e), status_code=500)
