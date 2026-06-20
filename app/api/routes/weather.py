@@ -28,12 +28,10 @@ def get_weather_forecast(
     fields: str | None = None,
 ):
     """
-    Fetch weather forecast data for the given coordinates.
+    Fetch hourly weather forecast data for the given coordinates and date range.
 
-    Query params:
-      - latitude, longitude: required floats
-      - fields: optional comma-separated list of hourly variables to include.
-                Defaults to all supported fields when omitted.
+    Coordinates must be supplied as **decimal degrees** — not degree/minute/second notation. E.g. -122.4194, 37.7749.
+    Dates must use the **YYYY-MM-DD** format (ISO 8601).
     """
     controller = Controller()
     try:

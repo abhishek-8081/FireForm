@@ -9,8 +9,5 @@ class ExternalAPIsCoordinator:
     def get_weather(self, latitude: float, longitude: float, start_date: str, end_date: str, hourly_fields: list[str] | None = None):
         return self.weather_api.get_weather(latitude, longitude, start_date, end_date, hourly_fields)
 
-    def get_postal_code(self, country: str, postal_code: str):
-        return self.zipcode_api.get_postal_code(country, postal_code)
-        
-    def get_location(self, country: str, city: str):
-        return self.zipcode_api.get_location(country, city)
+    def lookup_address(self, address: str) -> list[dict]:
+        return self.zipcode_api.lookup_address(address)

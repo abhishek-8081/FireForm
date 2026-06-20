@@ -16,4 +16,4 @@ openmeteo-requests
 requests-cache
 retry-requests
 pandas
-pgeocode
+geopy

@@ -5,38 +5,24 @@ from app.services.controller import Controller
 
 router = APIRouter(prefix="/zipcode", tags=["zipcode"])
 
-@router.get("/postal-code")
-def get_postal_code(
-    country: str,
-    postal_code: str,
-):
-    """
-    Fetch data for the given postal code.
 
-    Query params:
-      - country: required string
-      - postal_code: required string
+@router.get("/lookup-address")
+def lookup_address(address: str):
+    """
+    Resolve a free-form address to one or more geographic locations including
+    postal code, latitude, longitude, place name, state, county, and country.
+
+    Returns a list of matching results ordered by relevance (most relevant first).
+    Each result is guaranteed to include `latitude` and `longitude`; `postal_code`
+    is present when the geocoding service can determine it for the given address.
+
+    Example: 
+        address = "1600 Amphitheatre Parkway, Mountain View, CA, US"
     """
     controller = Controller()
     try:
-        return controller.get_postal_code(country, postal_code)
-    except Exception as e:
-        raise AppError(str(e), status_code=500)
-
-@router.get("/location")
-def get_location(
-    country: str,
-    city: str,
-):
-    """
-    Fetch data for the given location.
-
-    Query params:
-      - country: required string
-      - city: required string
-    """
-    controller = Controller()
-    try:
-        return controller.get_location(country, city)
+        return controller.lookup_address(address)
+    except TimeoutError as e:
+        raise AppError(str(e), status_code=504)
     except Exception as e:
         raise AppError(str(e), status_code=500)
