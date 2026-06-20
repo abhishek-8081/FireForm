@@ -1,0 +1,57 @@
+postal_code:
+  get:
+    summary: Resolve postal code
+    description: Fetch data for the given postal code and country.
+    tags:
+      - external-apis
+    parameters:
+      - name: country
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: postal_code
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Postal code data retrieved successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      '500':
+        description: Internal server error
+
+location:
+  get:
+    summary: Resolve location
+    description: Fetch data for the given city and country.
+    tags:
+      - external-apis
+    parameters:
+      - name: country
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: city
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Location data retrieved successfully
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+      '500':
+        description: Internal server error

@@ -1,0 +1,47 @@
+forecast:
+  get:
+    summary: Fetch weather forecast
+    description: Fetch weather data for the given location and fields.
+    tags:
+      - external-apis
+    parameters:
+      - name: latitude
+        in: query
+        required: true
+        schema:
+          type: number
+          format: float
+      - name: longitude
+        in: query
+        required: true
+        schema:
+          type: number
+          format: float
+      - name: start_date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: end_date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: fields
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Comma-separated list of hourly variables to request.
+    responses:
+      '200':
+        description: Weather data retrieved successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      '500':
+        description: Internal server error
