@@ -4,6 +4,9 @@ import requests
 from requests.exceptions import Timeout, RequestException
 
 from app.core.config import OLLAMA_HOST, OLLAMA_MODEL
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class LLM:
@@ -51,9 +54,9 @@ class LLM:
                         json_data = response.json()
                         break
                     except Timeout:
-                        print(f"[LOG]: Ollama request timed out (attempt {attempt+1}) for field '{field}'. Retrying...")
+                        logger.warning("Ollama request timed out (attempt %d) for field '%s'. Retrying...", attempt + 1, field)
                     except RequestException as e:
-                        print(f"[LOG]: Ollama request failed: {e}")
+                        logger.error("Ollama request failed: %s", e)
             except requests.exceptions.ConnectionError:
                 raise ConnectionError(
                     f"Could not connect to Ollama at {ollama_url}. "
@@ -67,12 +70,9 @@ class LLM:
             else:
                 parsed_response = json_data["response"]
                 self.add_response_to_json(field, parsed_response)
-                print(f"[{i}/{total_fields}] Extracted data for field '{field}' successfully.")
+                logger.info("[%d/%d] Extracted data for field '%s' successfully.", i, total_fields, field)
 
-        print("----------------------------------")
-        print("\t[LOG] Resulting JSON created from the input text:")
-        print(json.dumps(self._json, indent=2))
-        print("--------- extracted data ---------")
+        logger.info("Resulting JSON created from the input text:\n%s", json.dumps(self._json, indent=2))
 
         return self
 
