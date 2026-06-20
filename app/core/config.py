@@ -37,6 +37,10 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
 WHISPER_HOST = os.getenv("WHISPER_HOST", "http://localhost:9000").rstrip("/")
 
+# --- Celery / Redis -------------------------------------------------------
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+
 # --- CORS -----------------------------------------------------------------
 _DEFAULT_ORIGINS = "http://127.0.0.1:5173,http://localhost:5173"
 ALLOWED_ORIGINS = [
