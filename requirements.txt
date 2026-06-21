@@ -12,3 +12,8 @@ numpy<2
 ollama
 pypdf
 python-multipart
+openmeteo-requests
+requests-cache
+retry-requests
+pandas
+geopy
