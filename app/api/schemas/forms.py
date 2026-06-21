@@ -51,16 +51,27 @@ class AsyncFormFill(BaseModel):
 
 
 class JobResponse(BaseModel):
-    id: int
-    celery_task_id: str
-    template_id: int
+    job_id: str
+    job_type: str
     status: str
-    output_pdf_path: str | None = None
-    error: str | None = None
+    progress_percent: int = 0
+    result_url: str | None = None
+    error: dict | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class AsyncJobSubmitResponse(BaseModel):
+    job_id: str
+    status: str
+    poll_url: str
 
     class Config:
         from_attributes = True
 
 
 class AsyncFormFillResponse(BaseModel):
-    jobs: list[JobResponse]
+    jobs: list[AsyncJobSubmitResponse]

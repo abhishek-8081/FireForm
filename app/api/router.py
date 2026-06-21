@@ -9,10 +9,11 @@ New v1 endpoints live in app/api/v1/ and are included via v1_router below.
 
 from fastapi import APIRouter
 
-from app.api.routes import forms, templates
+from app.api.routes import forms, jobs, templates
 from app.api.v1.router import v1_router
 
 api_router = APIRouter()
 api_router.include_router(templates.router)
 api_router.include_router(forms.router)
 api_router.include_router(v1_router)
+api_router.include_router(jobs.router)
