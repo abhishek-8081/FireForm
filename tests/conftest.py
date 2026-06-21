@@ -14,7 +14,7 @@ from sqlmodel import SQLModel, Session, create_engine
 
 from app.main import app
 from app.api.deps import get_db
-from app.models import Template, FormSubmission  # noqa: F401 — registers tables
+from app.models import Template, FormSubmission, Job  # noqa: F401 — registers tables
 
 # ---------------------------------------------------------------------------
 # In-memory database
