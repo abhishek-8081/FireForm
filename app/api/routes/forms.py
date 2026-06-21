@@ -23,7 +23,7 @@ def fill_form(form: FormFill, db: Session = Depends(get_db)):
 
     fetched_template = get_template(db, form.template_id)
     if not fetched_template:
-        raise AppError("Template not found", status_code=404)
+        raise AppError("Template not found", status_code=404, error_code="TEMPLATE_NOT_FOUND")
 
     controller = Controller()
     try:
@@ -40,7 +40,7 @@ def fill_form(form: FormFill, db: Session = Depends(get_db)):
         )
         return create_form(db, submission)
     except Exception as e:
-        raise AppError(str(e), status_code=500)
+        raise AppError(str(e), status_code=500, error_code="FORM_FILL_ERROR")
 
 
 @router.get("/models", response_model=ModelsResponse)
@@ -93,9 +93,10 @@ def transcribe(audio: UploadFile = File(...)):
             f"Could not connect to the speech-to-text service at {whisper_url}. "
             "Please ensure the whisper service is running.",
             status_code=503,
+            error_code="STT_UNAVAILABLE",
         )
     except requests.exceptions.RequestException as e:
-        raise AppError(f"Transcription failed: {e}", status_code=502)
+        raise AppError(f"Transcription failed: {e}", status_code=502, error_code="TRANSCRIPTION_FAILED")
 
     try:
         text = (response.json().get("text") or "").strip()
