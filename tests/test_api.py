@@ -210,12 +210,18 @@ class TestFormEndpoints:
             "input_text": "some text",
         })
         assert resp.status_code == 500
-        assert "PDF template not found" in resp.json()["error"]
+        assert resp.json()["error_code"] == "FORM_FILL_ERROR"
+        assert "PDF template not found" in resp.json()["message"]
 
     def test_fill_form_validates_body(self, client):
-        """Missing required fields → 422."""
+        """Missing required fields → 422 with contract envelope."""
         resp = client.post("/forms/fill", json={})
         assert resp.status_code == 422
+        body = resp.json()
+        assert body["error_code"] == "VALIDATION_ERROR"
+        assert len(body["validation_errors"]) >= 1
+        assert body["validation_errors"][0]["field"] is not None
+        assert body["validation_errors"][0]["issue"] is not None
 
     def test_transcribe_success(self, client, monkeypatch):
         """Audio is forwarded to the whisper sidecar and its text returned."""
