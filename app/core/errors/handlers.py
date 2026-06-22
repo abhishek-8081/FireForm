@@ -2,11 +2,8 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.config import RETRY_AFTER_SECONDS
 from app.core.errors.base import AppError
-
-# Advisory retry hint on 503 responses — not a measured queue depth or backpressure
-# value; just a safe default so clients know when to try again.
-_RETRY_AFTER_SECONDS = 30
 
 
 def register_exception_handlers(app):
@@ -16,7 +13,7 @@ def register_exception_handlers(app):
         if exc.detail is not None:
             body["detail"] = exc.detail
         if exc.status_code == 503:
-            body["retry_after_seconds"] = _RETRY_AFTER_SECONDS
+            body["retry_after_seconds"] = RETRY_AFTER_SECONDS
         return JSONResponse(status_code=exc.status_code, content=body)
 
     @app.exception_handler(RequestValidationError)

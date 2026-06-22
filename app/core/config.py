@@ -44,3 +44,8 @@ ALLOWED_ORIGINS = [
     for origin in os.getenv("FRONTEND_ORIGINS", _DEFAULT_ORIGINS).split(",")
     if origin.strip()
 ]
+
+# --- Error handling -------------------------------------------------------
+# Advisory Retry-After sent to clients on 503 responses. This is a client
+# hint, not a measured backpressure value — the app has no queue-depth signal.
+RETRY_AFTER_SECONDS = 30
