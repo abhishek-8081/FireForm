@@ -12,7 +12,7 @@ from app.api.schemas.forms import (
 from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, WHISPER_HOST
 from app.core.errors.base import AppError
 from app.db.repositories import create_form, get_template
-from app.models import FormSubmission
+from app.models import FormSubmission, Template
 from app.services.controller import Controller
 
 router = APIRouter(prefix="/forms", tags=["forms"])
@@ -104,3 +104,80 @@ def transcribe(audio: UploadFile = File(...)):
         text = response.text.strip()
 
     return TranscriptionResponse(text=text)
+
+
+@router.get("/submissions")
+def get_submissions(db: Session = Depends(get_db)):
+    from sqlmodel import select
+    statement = (
+        select(FormSubmission, Template.name)
+        .join(Template, FormSubmission.template_id == Template.id, isouter=True)
+        .order_by(FormSubmission.created_at.desc(), FormSubmission.id.desc())
+    )
+    results = db.exec(statement).all()
+    return [
+        {
+            "id": sub.id,
+            "template_id": sub.template_id,
+            "template_name": name or "Unknown Template",
+            "input_text": sub.input_text,
+            "output_pdf_path": sub.output_pdf_path,
+            "created_at": sub.created_at.isoformat() if sub.created_at else None,
+        }
+        for sub, name in results
+    ]
+
+
+@router.get("/submissions/analytics")
+def get_submissions_analytics(db: Session = Depends(get_db)):
+    from collections import Counter
+    import re
+    from sqlmodel import select
+
+    statement = select(FormSubmission, Template.name).join(
+        Template, FormSubmission.template_id == Template.id, isouter=True
+    )
+    results = db.exec(statement).all()
+
+    total_submissions = len(results)
+
+    template_counts = Counter()
+    daily_counts = Counter()
+    words = []
+
+    stopwords = {
+        "the", "and", "a", "of", "to", "in", "is", "that", "it", "was", "for", "on",
+        "as", "with", "by", "at", "an", "be", "this", "are", "from", "or", "have",
+        "has", "had", "but", "not", "he", "she", "they", "we", "i", "you", "my", "his",
+        "her", "their", "our", "me", "him", "them", "us", "about", "there", "their",
+        "were", "been", "would", "could", "should", "will", "can", "no", "yes", "any",
+        "so", "very", "patient", "presents", "with", "reported", "history", "shows",
+        "left", "right", "pain", "due", "after", "before", "emergency", "department",
+        "medical", "clinical"
+    }
+
+    for sub, name in results:
+        template_name = name or "Unknown Template"
+        template_counts[template_name] += 1
+
+        if sub.created_at:
+            date_str = sub.created_at.strftime("%Y-%m-%d")
+            daily_counts[date_str] += 1
+
+        if sub.input_text:
+            found_words = re.findall(r"\b[a-zA-Z]{3,15}\b", sub.input_text.lower())
+            for w in found_words:
+                if w not in stopwords:
+                    words.append(w)
+
+    sorted_daily = [{"date": k, "count": v} for k, v in sorted(daily_counts.items())]
+    sorted_templates = [{"template_name": k, "count": v} for k, v in template_counts.most_common()]
+    common_terms = [{"word": k, "count": v} for k, v in Counter(words).most_common(12)]
+
+    return {
+        "total_submissions": total_submissions,
+        "by_template": sorted_templates,
+        "by_date": sorted_daily,
+        "common_terms": common_terms,
+    }
+
