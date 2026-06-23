@@ -1,4 +1,4 @@
-.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean migrate migration
+.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean status ready-banner sync
 
 COMPOSE     = docker compose -f docker/dev/compose.yml --env-file docker/.env.dev
 ENV_DEV     = docker/.env.dev
@@ -22,6 +22,8 @@ help:
 	@echo "make build        - Build Docker images"
 	@echo "make up           - Start all containers (detached)"
 	@echo "make down         - Stop all containers"
+	@echo "make sync         - Fast-install new requirements.txt deps into running app (no rebuild)"
+	@echo "make status       - Show compact container health summary"
 	@echo "make logs         - Stream all container logs"
 	@echo "make logs-app     - Stream app container logs"
 	@echo "make logs-ollama  - Stream Ollama container logs"
@@ -46,30 +48,38 @@ init:
 		*) echo "Run 'make fireform' when ready." ;; \
 	esac
 
-fireform: build up
-	@printf "Waiting for Ollama to be ready..."
-	@until $(COMPOSE) exec -T ollama ollama list > /dev/null 2>&1; do \
-		printf '.'; sleep 2; \
-	done
-	@echo " ready."
+fireform:
+	@$(COMPOSE) up -d --build
 	@if $(COMPOSE) exec -T ollama ollama list 2>/dev/null | grep -q "^$(OLLAMA_MODEL)"; then \
 		echo "  Model $(OLLAMA_MODEL) already pulled."; \
 	else \
 		echo "  Pulling $(OLLAMA_MODEL)..."; \
 		$(COMPOSE) exec -T ollama ollama pull $(OLLAMA_MODEL); \
 	fi
-	@echo ""
-	@echo "FireForm is ready!"
-	@echo "   API:      http://localhost:8000"
-	@echo "   API Docs: http://localhost:8000/docs"
-	@echo ""
-	@echo "Run 'make logs' to view live logs, 'make down' to stop."
+	@$(MAKE) --no-print-directory ready-banner
 
 build:
 	@$(COMPOSE) build
 
 up:
 	@$(COMPOSE) up -d
+	@$(MAKE) --no-print-directory ready-banner
+
+# Fast path for "I added a package": install the delta into the running container
+# (no image rebuild, no 1.6GB layer re-export). uv installs only what's missing in
+sync:
+	@$(COMPOSE) exec -T app sh -c "UV_TORCH_BACKEND=cpu uv pip install --system -r requirements.txt"
+
+status:
+	@$(COMPOSE) ps --format 'table {{.Service}}\t{{.Status}}'
+
+ready-banner:
+	@echo ""
+	@echo "FireForm is ready!"
+	@echo "   API:      http://localhost:8000"
+	@echo "   API Docs: http://localhost:8000/docs"
+	@echo ""
+	@echo "Run 'make logs' to view live logs, 'make down' to stop."
 
 down:
 	@$(COMPOSE) down --remove-orphans
