@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from app.models import Template, FormSubmission
+from app.models import Template, FormSubmission, Job
 
 # Templates
 def create_template(session: Session, template: Template) -> Template:
@@ -22,3 +22,32 @@ def create_form(session: Session, form: FormSubmission) -> FormSubmission:
     session.commit()
     session.refresh(form)
     return form
+
+
+# Jobs
+def create_job(session: Session, job: Job) -> Job:
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+def get_job(session: Session, job_id: int) -> Job | None:
+    return session.get(Job, job_id)
+
+
+def get_job_by_uuid(session: Session, job_uuid: str) -> Job | None:
+    statement = select(Job).where(Job.job_id == job_uuid)
+    return session.exec(statement).first()
+
+
+def get_job_by_celery_id(session: Session, celery_task_id: str) -> Job | None:
+    statement = select(Job).where(Job.celery_task_id == celery_task_id)
+    return session.exec(statement).first()
+
+
+def update_job(session: Session, job: Job) -> Job:
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
