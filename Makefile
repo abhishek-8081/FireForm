@@ -27,6 +27,7 @@ help:
 	@echo "make logs         - Stream all container logs"
 	@echo "make logs-app     - Stream app container logs"
 	@echo "make logs-ollama  - Stream Ollama container logs"
+	@echo "make logs-worker  - Stream Celery worker logs"
 	@echo "make shell        - Open shell in running app container"
 	@echo "make pull-model   - Pull Ollama model from .env.dev ($(OLLAMA_MODEL))"
 	@echo "make test         - Run test suite"
@@ -89,6 +90,9 @@ logs-app:
 
 logs-ollama:
 	@$(COMPOSE) logs -f ollama
+
+logs-worker:
+	@$(COMPOSE) logs -f celery-worker
 
 shell:
 	@$(COMPOSE) exec app /bin/sh

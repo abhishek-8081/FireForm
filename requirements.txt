@@ -12,6 +12,8 @@ numpy<2
 ollama
 pypdf
 python-multipart
+celery[redis]
+redis
 openmeteo-requests
 requests-cache
 retry-requests
