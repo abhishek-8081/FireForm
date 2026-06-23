@@ -1,4 +1,4 @@
-.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean
+.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean migrate migration
 
 COMPOSE     = docker compose -f docker/dev/compose.yml --env-file docker/.env.dev
 ENV_DEV     = docker/.env.dev
@@ -29,6 +29,8 @@ help:
 	@echo "make shell        - Open shell in running app container"
 	@echo "make pull-model   - Pull Ollama model from .env.dev ($(OLLAMA_MODEL))"
 	@echo "make test         - Run test suite"
+	@echo "make migrate      - Run pending Alembic migrations"
+	@echo "make migration    - Generate new migration (msg='description')"
 	@echo "make clean        - Stop containers (preserves volumes)"
 	@echo "make super-clean  - [CAUTION] Stop containers, delete volumes, prune Docker"
 
@@ -92,6 +94,12 @@ pull-model:
 
 test:
 	@$(COMPOSE) exec -T app python3 -m pytest tests/ -v
+
+migrate:
+	@$(COMPOSE) exec -T app alembic upgrade head
+
+migration:
+	@$(COMPOSE) exec -T app alembic revision --autogenerate -m "$(msg)"
 
 clean:
 	@$(COMPOSE) down

@@ -1,24 +1,37 @@
 import datetime
 import logging
+from pathlib import Path
 
-from sqlmodel import Session, SQLModel, select
+from alembic import command
+from alembic.config import Config
+from sqlmodel import Session, select
 
 from app.core.config import DEFAULT_TEMPLATE_DIR
 from app.db.database import engine
-
 from app.models import FormSubmission, Template  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
+ALEMBIC_INI = str(Path(__file__).resolve().parents[2] / "alembic.ini")
+
+
+def _alembic_cfg() -> Config:
+    cfg = Config(ALEMBIC_INI)
+    return cfg
+
+
+def run_migrations():
+    logger.info("Running Alembic migrations...")
+    command.upgrade(_alembic_cfg(), "head")
+    logger.info("Migrations complete.")
+
 
 def seed_db():
     with Session(engine) as session:
-        # Check if we already have templates
         statement = select(Template)
         try:
             results = session.exec(statement).first()
         except Exception:
-            # Table might not exist yet if called at a weird time
             results = None
 
         if not results:
@@ -33,7 +46,6 @@ def seed_db():
                 "Date": "string",
             }
 
-            # Using ID 2 as agreed to avoid any ID 1 corruption
             default_template = Template(
                 id=2,
                 name="Manual Test Template",
@@ -47,7 +59,7 @@ def seed_db():
 
 
 def init_db():
-    SQLModel.metadata.create_all(engine)
+    run_migrations()
     seed_db()
 
 
