@@ -161,8 +161,6 @@ def get_health():
 
 @router.get("/schema/incident", summary="Get canonical incident JSON Schema")
 def get_schema_incident():
-    # PROVISIONAL: This 501 body shape is not canonical — it will be updated
-    # to match the standardized ErrorResponse envelope once #543 lands.
     return JSONResponse(
         status_code=501,
         content={
@@ -174,7 +172,6 @@ def get_schema_incident():
 
 @router.get("/schema/incident/versions", summary="Get incident schema version history")
 def get_schema_versions():
-    # PROVISIONAL: Same as /schema/incident — shape will align with #543.
     return JSONResponse(
         status_code=501,
         content={

@@ -64,7 +64,7 @@ fireform: build up
 	@echo "Run 'make logs' to view live logs, 'make down' to stop."
 
 build:
-	@$(COMPOSE) build --progress=quiet
+	@$(COMPOSE) build
 
 up:
 	@$(COMPOSE) up -d
