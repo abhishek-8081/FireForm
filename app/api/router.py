@@ -1,23 +1,12 @@
-"""Aggregates every route module into a single API router.
-
-Add new feature routers here; main.py only mounts this one router.
-
-IMPORTANT: Never add prefix="/api/v1" to api_router itself — that would
-silently move the existing /templates and /forms routes and break the frontend.
-New v1 endpoints live in app/api/v1/ and are included via v1_router below.
-"""
-
 from fastapi import APIRouter
 
-from app.api.routes import forms, jobs, templates
-from app.api.v1.router import v1_router
-from app.api.routes import forms, templates, weather, zipcode
+from app.api.routes import forms, templates, weather, zipcode, jobs, system
+from app.core.config import API_PREFIX
 
 api_router = APIRouter()
-api_router.include_router(templates.router)
-api_router.include_router(forms.router)
-api_router.include_router(v1_router)
-api_router.include_router(jobs.router)
-
-api_router.include_router(weather.router)
-api_router.include_router(zipcode.router)
+api_router.include_router(templates.router, prefix=API_PREFIX)
+api_router.include_router(forms.router, prefix=API_PREFIX)
+api_router.include_router(system.router, prefix=API_PREFIX)
+api_router.include_router(jobs.router, prefix=API_PREFIX)
+api_router.include_router(weather.router, prefix=API_PREFIX)
+api_router.include_router(zipcode.router, prefix=API_PREFIX)
