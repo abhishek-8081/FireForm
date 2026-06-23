@@ -17,6 +17,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+      start_interval: 1s
 
   ollama:
     image: ollama/ollama:latest
@@ -33,6 +35,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+      start_interval: 2s
 
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:latest
@@ -53,6 +56,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+      start_interval: 3s
 
   app:
     build:
