@@ -29,3 +29,9 @@ jobs:
           PYTHONPATH: .
         run: |
           python -m pytest tests/ -v --tb=short
+
+      - name: Check for un-migrated model changes
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m alembic check
