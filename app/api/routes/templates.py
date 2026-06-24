@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlmodel import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, verify_api_key
 from app.api.schemas.templates import (
     TemplateCreate,
     TemplateResponse,
@@ -15,9 +15,10 @@ from app.api.schemas.templates import (
     MakeFillableResponse,
 )
 from app.core.config import BASE_DIR, DEFAULT_TEMPLATE_DIR
-from app.db.repositories import create_template, list_templates
-from app.models import Template
+from app.db.repositories import create_template, list_templates, get_template, delete_template
+from app.models import Template, FormSubmission, Job
 from app.services.controller import Controller
+from sqlmodel import select
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 PROJECT_ROOT = BASE_DIR
@@ -197,3 +198,43 @@ def make_fillable(req: MakeFillableRequest):
         pdf_path=relative_path,
         field_count=_count_pdf_widgets(relative_path),
     )
+
+
+@router.delete("/{template_id}", dependencies=[Depends(verify_api_key)])
+def delete_template_endpoint(template_id: int, db: Session = Depends(get_db)):
+    template = get_template(db, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    # 1. Clean up associated submissions and their generated PDFs
+    sub_stmt = select(FormSubmission).where(FormSubmission.template_id == template_id)
+    submissions = list(db.exec(sub_stmt))
+    for sub in submissions:
+        if sub.output_pdf_path:
+            try:
+                resolved_out = _resolve_project_file(sub.output_pdf_path)
+                if resolved_out.exists() and resolved_out.is_file():
+                    resolved_out.unlink()
+            except Exception:
+                pass
+        db.delete(sub)
+
+    # 2. Clean up associated jobs
+    job_stmt = select(Job).where(Job.template_id == template_id)
+    jobs = list(db.exec(job_stmt))
+    for job in jobs:
+        db.delete(job)
+
+    # 3. Delete template PDF file
+    if template.pdf_path:
+        try:
+            resolved_pdf = _resolve_project_file(template.pdf_path)
+            if resolved_pdf.exists() and resolved_pdf.is_file():
+                resolved_pdf.unlink()
+        except Exception:
+            pass
+
+    # 4. Delete the template itself
+    delete_template(db, template)
+    return {"status": "success", "message": "Template and all associated data deleted"}
+
