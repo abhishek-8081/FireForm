@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 class Template(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
-    fields: dict = Field(sa_column=Column(JSON))
+    fields: dict = Field(sa_column=Column(JSON, nullable=False))
     pdf_path: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

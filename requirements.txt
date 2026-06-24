@@ -19,3 +19,4 @@ requests-cache
 retry-requests
 pandas
 geopy
+alembic
