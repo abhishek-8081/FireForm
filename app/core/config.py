@@ -53,3 +53,12 @@ ALLOWED_ORIGINS = [
 # Advisory Retry-After sent to clients on 503 responses. This is a client
 # hint, not a measured backpressure value — the app has no queue-depth signal.
 RETRY_AFTER_SECONDS = 30
+
+# --- API Versioning -------------------------------------------------------
+API_PREFIX = "/api/v1"
+
+# --- Security & Access Control ---------------------------------------------
+FIREFORM_API_KEY = os.getenv("FIREFORM_API_KEY", "")
+
+# --- Data Retention --------------------------------------------------------
+RETENTION_PERIOD_DAYS = int(os.getenv("RETENTION_PERIOD_DAYS", "30"))

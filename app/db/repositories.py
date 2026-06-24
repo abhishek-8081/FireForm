@@ -51,3 +51,18 @@ def update_job(session: Session, job: Job) -> Job:
     session.commit()
     session.refresh(job)
     return job
+
+
+def delete_template(session: Session, template: Template) -> None:
+    session.delete(template)
+    session.commit()
+
+
+def get_form_submission(session: Session, submission_id: int) -> FormSubmission | None:
+    return session.get(FormSubmission, submission_id)
+
+
+def delete_form_submission(session: Session, submission: FormSubmission) -> None:
+    session.delete(submission)
+    session.commit()
+

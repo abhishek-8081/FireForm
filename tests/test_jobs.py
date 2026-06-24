@@ -1,12 +1,13 @@
 """Tests for async job submission and status endpoints."""
 
 from unittest.mock import patch, MagicMock
+from app.core.config import API_PREFIX
 
 
 class TestJobEndpoints:
 
     def _seed_template(self, client):
-        resp = client.post("/templates/create", json={
+        resp = client.post(f"{API_PREFIX}/templates/create", json={
             "name": "Test Template",
             "pdf_path": "test.pdf",
             "fields": {"name": "string"},
@@ -20,7 +21,7 @@ class TestJobEndpoints:
         mock_task.delay.return_value = mock_result
 
         tpl_id = self._seed_template(client)
-        resp = client.post("/forms/jobs", json={
+        resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [tpl_id],
             "input_text": "John Doe firefighter",
         })
@@ -29,7 +30,7 @@ class TestJobEndpoints:
         assert len(data["jobs"]) == 1
         assert data["jobs"][0]["status"] == "queued"
         assert "job_id" in data["jobs"][0]
-        assert data["jobs"][0]["poll_url"].startswith("/api/v1/jobs/")
+        assert data["jobs"][0]["poll_url"].startswith(f"{API_PREFIX}/jobs/")
         mock_task.delay.assert_called_once_with(tpl_id, "John Doe firefighter", None)
 
     @patch("app.api.routes.jobs.fill_form_task")
@@ -41,7 +42,7 @@ class TestJobEndpoints:
 
         t1 = self._seed_template(client)
         t2 = self._seed_template(client)
-        resp = client.post("/forms/jobs", json={
+        resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [t1, t2],
             "input_text": "batch input",
         })
@@ -53,7 +54,7 @@ class TestJobEndpoints:
 
     @patch("app.api.routes.jobs.fill_form_task")
     def test_submit_async_missing_template(self, mock_task, client):
-        resp = client.post("/forms/jobs", json={
+        resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [9999],
             "input_text": "some text",
         })
@@ -65,13 +66,13 @@ class TestJobEndpoints:
         mock_task.delay.return_value = MagicMock(id="celery-abc")
 
         tpl_id = self._seed_template(client)
-        submit_resp = client.post("/forms/jobs", json={
+        submit_resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [tpl_id],
             "input_text": "test input",
         })
         job_id = submit_resp.json()["jobs"][0]["job_id"]
 
-        resp = client.get(f"/jobs/{job_id}")
+        resp = client.get(f"{API_PREFIX}/jobs/{job_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["job_id"] == job_id
@@ -80,7 +81,7 @@ class TestJobEndpoints:
         assert data["progress_percent"] == 0
 
     def test_get_job_not_found(self, client):
-        resp = client.get("/jobs/00000000-0000-0000-0000-000000000000")
+        resp = client.get(f"{API_PREFIX}/jobs/00000000-0000-0000-0000-000000000000")
         assert resp.status_code == 404
 
     @patch("app.api.routes.jobs.fill_form_task")
@@ -88,7 +89,7 @@ class TestJobEndpoints:
         mock_task.delay.return_value = MagicMock(id="celery-xyz")
 
         tpl_id = self._seed_template(client)
-        resp = client.post("/forms/jobs", json={
+        resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [tpl_id],
             "input_text": "test",
             "model": "mistral:latest",
@@ -97,14 +98,14 @@ class TestJobEndpoints:
         mock_task.delay.assert_called_once_with(tpl_id, "test", "mistral:latest")
 
     def test_submit_empty_template_ids(self, client):
-        resp = client.post("/forms/jobs", json={
+        resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [],
             "input_text": "test",
         })
         assert resp.status_code == 422
 
     def test_submit_empty_input_text(self, client):
-        resp = client.post("/forms/jobs", json={
+        resp = client.post(f"{API_PREFIX}/forms/jobs", json={
             "template_ids": [1],
             "input_text": "",
         })

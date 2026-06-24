@@ -16,4 +16,14 @@ celery_app.conf.update(
     result_expires=86400,
 )
 
-celery_app.conf.include = ["app.tasks.fill"]
+celery_app.conf.include = ["app.tasks.fill", "app.tasks.purge"]
+
+# Optional Celery Beat schedule — runs purge_old_submissions once a day.
+# Enable by running: celery -A app.core.celery beat
+from celery.schedules import crontab  # noqa: E402
+celery_app.conf.beat_schedule = {
+    "daily-submission-purge": {
+        "task": "purge_old_submissions",
+        "schedule": crontab(hour=3, minute=0),  # 03:00 UTC daily
+    },
+}

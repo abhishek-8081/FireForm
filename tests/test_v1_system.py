@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 import requests as requests_lib
 
-import app.api.v1.routes.system as system_mod
+import app.api.routes.system as system_mod
 
 
 # ---------------------------------------------------------------------------
@@ -120,7 +120,7 @@ class TestHealthEndpoint:
     def test_all_healthy(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
 
@@ -139,7 +139,7 @@ class TestHealthEndpoint:
     def test_ollama_down_returns_200_degraded(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_ollama_down)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_ollama_down)
 
         resp = client.get("/api/v1/health")
 
@@ -153,7 +153,7 @@ class TestHealthEndpoint:
     def test_whisper_down_returns_200_degraded(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_whisper_down)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_whisper_down)
 
         resp = client.get("/api/v1/health")
 
@@ -166,7 +166,7 @@ class TestHealthEndpoint:
     def test_db_down_returns_503_unhealthy(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_down())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
 
@@ -182,7 +182,7 @@ class TestHealthEndpoint:
         """
         monkeypatch.setattr(system_mod, "engine", _mock_engine_execute_fails())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
 
@@ -196,7 +196,7 @@ class TestHealthEndpoint:
         """current_load must be absent or null — never a made-up value."""
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
@@ -209,7 +209,7 @@ class TestHealthEndpoint:
         """
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
         monkeypatch.setattr(system_mod, "_SLOW_MS", -1)
 
         resp = client.get("/api/v1/health")
@@ -222,7 +222,7 @@ class TestHealthEndpoint:
         """models_available is built from /api/tags; loaded=True only for models in /api/ps."""
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
@@ -238,7 +238,7 @@ class TestHealthEndpoint:
     def test_model_loaded_reflects_running_model(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
@@ -248,7 +248,7 @@ class TestHealthEndpoint:
     def test_ollama_version_present(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
@@ -258,7 +258,7 @@ class TestHealthEndpoint:
     def test_storage_disk_free_present(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil(free_bytes=200 * 1024 ** 3))
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
@@ -269,7 +269,7 @@ class TestHealthEndpoint:
     def test_storage_unavailable_is_degraded(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil(raise_oserror=True))
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
@@ -280,15 +280,15 @@ class TestHealthEndpoint:
     def test_uptime_seconds_is_non_negative(self, client, monkeypatch):
         monkeypatch.setattr(system_mod, "engine", _mock_engine_healthy())
         monkeypatch.setattr(system_mod, "shutil", _mock_shutil())
-        monkeypatch.setattr("app.api.v1.routes.system.requests.get", _fake_get_all_healthy)
+        monkeypatch.setattr("app.api.routes.system.requests.get", _fake_get_all_healthy)
 
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
         assert resp.json()["uptime_seconds"] >= 0
 
     def test_existing_routes_not_displaced(self, client):
-        """Sanity: adding v1_router must not break the existing /templates endpoint."""
-        resp = client.get("/templates")
+        """Sanity: adding v1_router must not break the existing /api/v1/templates endpoint."""
+        resp = client.get("/api/v1/templates")
         assert resp.status_code == 200
 
 

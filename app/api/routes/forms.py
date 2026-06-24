@@ -1,19 +1,39 @@
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import requests
-from fastapi import APIRouter, Depends, File, UploadFile
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, File, UploadFile, Query
+from sqlmodel import Session, select
 
-from app.api.deps import get_db
+from app.api.deps import get_db, verify_api_key
 from app.api.schemas.forms import (
     FormFill,
     FormFillResponse,
     ModelsResponse,
     TranscriptionResponse,
 )
-from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, WHISPER_HOST
+from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, WHISPER_HOST, BASE_DIR, RETENTION_PERIOD_DAYS
 from app.core.errors.base import AppError
-from app.db.repositories import create_form, get_template
-from app.models import FormSubmission, Template
+from app.db.repositories import create_form, get_template, get_form_submission, delete_form_submission
+from app.models import FormSubmission
 from app.services.controller import Controller
+
+PROJECT_ROOT = BASE_DIR
+
+def _resolve_project_file(file_path: str) -> Path:
+    raw_path = (file_path or "").strip()
+    if not raw_path:
+        raise AppError("Path is required", status_code=400)
+
+    candidate = Path(raw_path)
+    if not candidate.is_absolute():
+        candidate = (PROJECT_ROOT / candidate).resolve()
+    else:
+        candidate = candidate.resolve()
+
+    if candidate != PROJECT_ROOT and PROJECT_ROOT not in candidate.parents:
+        raise AppError("Path must be inside the project", status_code=400)
+
+    return candidate
 
 router = APIRouter(prefix="/forms", tags=["forms"])
 
@@ -104,6 +124,48 @@ def transcribe(audio: UploadFile = File(...)):
         text = response.text.strip()
 
     return TranscriptionResponse(text=text)
+
+
+@router.delete("/{submission_id}", dependencies=[Depends(verify_api_key)])
+def delete_submission_endpoint(submission_id: int, db: Session = Depends(get_db)):
+    sub = get_form_submission(db, submission_id)
+    if not sub:
+        raise AppError("Submission not found", status_code=404, error_code="SUBMISSION_NOT_FOUND")
+
+    if sub.output_pdf_path:
+        try:
+            resolved_out = _resolve_project_file(sub.output_pdf_path)
+            if resolved_out.exists() and resolved_out.is_file():
+                resolved_out.unlink()
+        except Exception:
+            pass
+
+    delete_form_submission(db, sub)
+    return {"status": "success", "message": "Submission and associated output file deleted"}
+
+
+@router.post("/purge", dependencies=[Depends(verify_api_key)])
+def purge_submissions_endpoint(days: int = Query(default=None), db: Session = Depends(get_db)):
+    retention_days = days if days is not None else RETENTION_PERIOD_DAYS
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+
+    statement = select(FormSubmission).where(FormSubmission.created_at < cutoff_date)
+    submissions = list(db.exec(statement))
+
+    purged_count = 0
+    for sub in submissions:
+        if sub.output_pdf_path:
+            try:
+                resolved_out = _resolve_project_file(sub.output_pdf_path)
+                if resolved_out.exists() and resolved_out.is_file():
+                    resolved_out.unlink()
+            except Exception:
+                pass
+        delete_form_submission(db, sub)
+        purged_count += 1
+
+    return {"status": "success", "purged_count": purged_count, "retention_days_used": retention_days}
+
 
 
 @router.get("/submissions")
