@@ -35,6 +35,7 @@ def test_upgrade_head(alembic_cfg, alembic_engine):
     tables = inspector.get_table_names()
     assert "template" in tables
     assert "formsubmission" in tables
+    assert "job" in tables
     assert "alembic_version" in tables
 
 
@@ -46,6 +47,7 @@ def test_downgrade_base(alembic_cfg, alembic_engine):
     tables = inspector.get_table_names()
     assert "template" not in tables
     assert "formsubmission" not in tables
+    assert "job" not in tables
 
 
 def test_round_trip(alembic_cfg, alembic_engine):
@@ -80,6 +82,47 @@ def test_formsubmission_fk(alembic_cfg, alembic_engine):
 
     inspector = inspect(alembic_engine)
     fks = inspector.get_foreign_keys("formsubmission")
+    assert len(fks) == 1
+    assert fks[0]["referred_table"] == "template"
+    assert fks[0]["referred_columns"] == ["id"]
+
+
+def test_job_columns(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"] for c in inspector.get_columns("job")}
+    assert columns == {
+        "id",
+        "job_id",
+        "celery_task_id",
+        "job_type",
+        "template_id",
+        "input_text",
+        "status",
+        "progress_percent",
+        "result_url",
+        "error",
+        "model",
+        "created_at",
+        "updated_at",
+    }
+
+
+def test_job_indexes(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    indexes = {ix["name"]: ix for ix in inspector.get_indexes("job")}
+    assert indexes["ix_job_job_id"]["unique"]
+    assert not indexes["ix_job_celery_task_id"]["unique"]
+
+
+def test_job_fk(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    fks = inspector.get_foreign_keys("job")
     assert len(fks) == 1
     assert fks[0]["referred_table"] == "template"
     assert fks[0]["referred_columns"] == ["id"]

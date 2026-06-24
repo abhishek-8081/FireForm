@@ -3,9 +3,10 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from sqlmodel import SQLModel
+
 from app.core.config import DATABASE_URL
-from app.models.models import SQLModel 
-from app.models import Template, FormSubmission 
+from app.models import FormSubmission, Job, Template 
 
 config = context.config
 
