@@ -14,7 +14,7 @@ from app.api.schemas.forms import (
 from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, WHISPER_HOST, BASE_DIR, RETENTION_PERIOD_DAYS
 from app.core.errors.base import AppError
 from app.db.repositories import create_form, get_template, get_form_submission, delete_form_submission
-from app.models import FormSubmission
+from app.models import FormSubmission, Template
 from app.services.controller import Controller
 
 PROJECT_ROOT = BASE_DIR
