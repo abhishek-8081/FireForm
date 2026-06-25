@@ -1,6 +1,11 @@
 from enum import Enum
 
 
+class InputType(str, Enum):
+    voice = "voice"
+    text = "text"
+
+
 class InputStatus(str, Enum):
     queued = "queued"
     transcribing = "transcribing"
