@@ -1,5 +1,8 @@
+from uuid import UUID
+
 from sqlmodel import Session, select
-from app.models import Template, FormSubmission, Job
+
+from app.models import Template, FormSubmission, Job, Input
 
 # Templates
 def create_template(session: Session, template: Template) -> Template:
@@ -65,4 +68,16 @@ def get_form_submission(session: Session, submission_id: int) -> FormSubmission 
 def delete_form_submission(session: Session, submission: FormSubmission) -> None:
     session.delete(submission)
     session.commit()
+
+
+# Inputs
+def create_input(session: Session, input_obj: Input) -> Input:
+    session.add(input_obj)
+    session.commit()
+    session.refresh(input_obj)
+    return input_obj
+
+
+def get_input(session: Session, input_id: UUID) -> Input | None:
+    return session.get(Input, input_id)
 

@@ -3,13 +3,12 @@ from __future__ import annotations
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.api.schemas.enums import InputStatus, InputType
 
 
 class TextInputRequest(BaseModel):
-    model_config = ConfigDict()
     narrative: str = Field(min_length=20)
     station_id: str | None = None
     responder_badge: str | None = None
@@ -17,7 +16,6 @@ class TextInputRequest(BaseModel):
 
 
 class TextInputResponse(BaseModel):
-    model_config = ConfigDict()
     input_id: UUID
     status: InputStatus
     input_type: InputType
@@ -27,7 +25,6 @@ class TextInputResponse(BaseModel):
 
 
 class InputRecordResponse(BaseModel):
-    model_config = ConfigDict()
     input_id: UUID
     input_type: InputType
     status: InputStatus

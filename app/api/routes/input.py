@@ -1,65 +1,51 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
-from sqlmodel import Session, select
+from fastapi.exceptions import RequestValidationError
+from sqlmodel import Session
 
 from app.api.deps import get_db
-from app.api.schemas.enums import InputStatus, InputType
+from app.api.schemas.enums import InputStatus
 from app.api.schemas.input import InputRecordResponse, TextInputRequest, TextInputResponse
 from app.core.config import INPUT_POLL_INTERVAL_SECONDS
 from app.core.errors.base import AppError
-from app.models import Input
+from app.db.repositories import create_input, get_input as repo_get_input
+from app.services.input import InputService
 
 router = APIRouter(prefix="/input", tags=["input"])
 
 
 @router.post("/text", response_model=TextInputResponse, status_code=201)
 def submit_text_input(body: TextInputRequest, db: Session = Depends(get_db)):
-    narrative = body.narrative
-
-    if len(narrative) > 50_000:
+    if len(body.narrative) > 50_000:
         raise AppError(
             "Narrative exceeds maximum length of 50,000 characters",
             status_code=413,
             error_code="NARRATIVE_TOO_LONG",
-            detail={"max_characters": 50_000, "received_characters": len(narrative)},
+            detail={"max_characters": 50_000, "received_characters": len(body.narrative)},
         )
 
-    words = narrative.split()
-    if len(words) < 10:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "error_code": "VALIDATION_ERROR",
-                "message": "Request validation failed",
-                "validation_errors": [
-                    {
-                        "field": "narrative",
-                        "issue": "Must contain at least 10 words",
-                        "value": narrative,
-                    }
-                ],
-            },
+    svc = InputService()
+    try:
+        record = svc.build_text_input(
+            narrative=body.narrative,
+            station_id=body.station_id,
+            responder_badge=body.responder_badge,
+            incident_date_hint=body.incident_date_hint,
+        )
+    except ValueError as exc:
+        raise RequestValidationError(
+            errors=[
+                {
+                    "loc": ("body", "narrative"),
+                    "msg": str(exc),
+                    "input": body.narrative,
+                    "type": "value_error",
+                }
+            ]
         )
 
-    now = datetime.now(timezone.utc)
-    record = Input(
-        input_type=InputType.text,
-        status=InputStatus.ready,
-        transcript=narrative,
-        character_count=len(narrative),
-        word_count=len(words),
-        station_id=body.station_id,
-        responder_badge=body.responder_badge,
-        incident_date_hint=body.incident_date_hint,
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
+    record = create_input(db, record)
 
     return TextInputResponse(
         input_id=record.input_id,
@@ -73,7 +59,7 @@ def submit_text_input(body: TextInputRequest, db: Session = Depends(get_db)):
 
 @router.get("/{input_id}", response_model=InputRecordResponse)
 def get_input(input_id: UUID, db: Session = Depends(get_db)):
-    record = db.exec(select(Input).where(Input.input_id == input_id)).first()
+    record = repo_get_input(db, input_id)
     if record is None:
         raise AppError(
             f"Input with ID {input_id} not found",
