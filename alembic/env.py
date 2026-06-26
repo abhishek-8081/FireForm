@@ -6,7 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from app.core.config import DATABASE_URL
-from app.models import FormSubmission, Job, Template 
+from app.models import Extraction, Form, FormSubmission, Incident, Input, Job, Report, Template  # noqa: F401
 
 config = context.config
 
