@@ -54,6 +54,10 @@ ALLOWED_ORIGINS = [
 # hint, not a measured backpressure value — the app has no queue-depth signal.
 RETRY_AFTER_SECONDS = 30
 
+# Polling hint returned by GET /input/{id} when a voice input is still queued
+# or transcribing. Value matches the contract example (contracts/path/input.yaml).
+INPUT_POLL_INTERVAL_SECONDS = 5
+
 # --- API Versioning -------------------------------------------------------
 API_PREFIX = "/api/v1"
 
