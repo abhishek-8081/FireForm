@@ -11,7 +11,8 @@ from app.api.schemas.forms import (
     ModelsResponse,
     TranscriptionResponse,
 )
-from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, WHISPER_HOST, BASE_DIR, RETENTION_PERIOD_DAYS
+from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, BASE_DIR, RETENTION_PERIOD_DAYS
+from app.services.whisper import call_whisper_asr
 from app.core.errors.base import AppError
 from app.db.repositories import create_form, get_template, get_form_submission, delete_form_submission
 from app.models import FormSubmission
@@ -94,34 +95,16 @@ def transcribe(audio: UploadFile = File(...)):
     audio is streamed straight through to the local STT service and never
     persisted — no PII leaves the machine.
     """
-    whisper_url = f"{WHISPER_HOST}/asr"
-
-    files = {
-        "audio_file": (
-            audio.filename or "audio.wav",
+    try:
+        text = call_whisper_asr(
             audio.file.read(),
+            audio.filename or "audio.wav",
             audio.content_type or "audio/wav",
         )
-    }
-    params = {"task": "transcribe", "output": "json", "encode": "true"}
-
-    try:
-        response = requests.post(whisper_url, params=params, files=files, timeout=120)
-        response.raise_for_status()
-    except requests.exceptions.ConnectionError:
-        raise AppError(
-            f"Could not connect to the speech-to-text service at {whisper_url}. "
-            "Please ensure the whisper service is running.",
-            status_code=503,
-            error_code="STT_UNAVAILABLE",
-        )
-    except requests.exceptions.RequestException as e:
-        raise AppError(f"Transcription failed: {e}", status_code=502, error_code="TRANSCRIPTION_FAILED")
-
-    try:
-        text = (response.json().get("text") or "").strip()
-    except ValueError:
-        text = response.text.strip()
+    except ConnectionError as exc:
+        raise AppError(str(exc), status_code=503, error_code="STT_UNAVAILABLE")
+    except RuntimeError as exc:
+        raise AppError(str(exc), status_code=502, error_code="TRANSCRIPTION_FAILED")
 
     return TranscriptionResponse(text=text)
 

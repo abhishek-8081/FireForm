@@ -66,3 +66,10 @@ FIREFORM_API_KEY = os.getenv("FIREFORM_API_KEY", "")
 
 # --- Data Retention --------------------------------------------------------
 RETENTION_PERIOD_DAYS = int(os.getenv("RETENTION_PERIOD_DAYS", "30"))
+
+# --- Audio storage --------------------------------------------------------
+# Voice input audio files land here: {AUDIO_DIR}/{input_id}.{ext}
+AUDIO_DIR = DATA_DIR / "audio"
+
+# Advisory estimate returned in VoiceInputResponse.estimated_processing_seconds.
+ESTIMATED_TRANSCRIPTION_SECONDS = int(os.getenv("ESTIMATED_TRANSCRIPTION_SECONDS", "30"))
