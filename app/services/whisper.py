@@ -31,9 +31,8 @@ def call_whisper_asr(audio_bytes: bytes, filename: str, content_type: str) -> st
 
 
 def check_whisper_available() -> bool:
-    """Return True if the Whisper sidecar responds on its base URL."""
+    """Return True if the Whisper sidecar responds with a successful status."""
     try:
-        requests.get(WHISPER_HOST, timeout=3)
-        return True
+        return requests.get(WHISPER_HOST, timeout=3).ok
     except requests.exceptions.RequestException:
         return False

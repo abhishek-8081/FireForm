@@ -6,19 +6,12 @@ from uuid import UUID
 
 from app.api.schemas.enums import InputStatus
 from app.core.celery import celery_app
+from app.core.config import AUDIO_CONTENT_TYPES
 from app.db.database import get_session
 from app.db.repositories import get_input, get_job_by_uuid, update_input, update_job
 from app.services.whisper import call_whisper_asr
 
 logger = logging.getLogger(__name__)
-
-_CONTENT_TYPES: dict[str, str] = {
-    "wav": "audio/wav",
-    "mp3": "audio/mpeg",
-    "m4a": "audio/m4a",
-    "ogg": "audio/ogg",
-    "webm": "audio/webm",
-}
 
 
 def _wav_duration(path: Path) -> float | None:
@@ -75,7 +68,7 @@ def transcribe_audio_task(input_id_str: str, audio_path: str, job_id_str: str) -
         # transcribe
         p = Path(audio_path)
         ext = p.suffix.lstrip(".")
-        text = call_whisper_asr(p.read_bytes(), p.name, _CONTENT_TYPES.get(ext, "audio/wav"))
+        text = call_whisper_asr(p.read_bytes(), p.name, AUDIO_CONTENT_TYPES.get(ext, "audio/wav"))
 
         # success
         words = text.split()
@@ -97,7 +90,7 @@ def transcribe_audio_task(input_id_str: str, audio_path: str, job_id_str: str) -
 
     except ConnectionError as exc:
         logger.exception("transcribe_audio_task: Whisper unavailable for input %s", input_id_str)
-        _fail_records(session, input_id, job_id_str, "LLM_UNAVAILABLE", str(exc))
+        _fail_records(session, input_id, job_id_str, "STT_UNAVAILABLE", str(exc))
         raise
 
     except RuntimeError as exc:

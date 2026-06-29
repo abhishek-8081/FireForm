@@ -22,13 +22,6 @@ VOICE_URL = "/api/v1/input/voice"
 _WAV_BYTES = b"RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x80>\x00\x00\x00}\x00\x00\x02\x00\x10\x00data\x00\x00\x00\x00"
 
 
-def _voice_post(client, filename="memo.wav", content=None, extra_fields=None):
-    """Helper: POST a voice upload, mocking dispatch and availability."""
-    data = extra_fields or {}
-    files = {"audio_file": (filename, io.BytesIO(content or _WAV_BYTES), "audio/wav")}
-    return client, data, files
-
-
 # ---------------------------------------------------------------------------
 # POST /api/v1/input/voice — endpoint tests (dispatch mocked)
 # ---------------------------------------------------------------------------
@@ -38,8 +31,9 @@ class TestSubmitVoiceInput:
     def _post(self, client, filename="memo.wav", content=None, fields=None, whisper_up=True):
         mock_result = MagicMock()
         mock_result.id = "celery-task-uuid-001"
+        # Dispatch is owned by InputService.process_voice_upload — patch there.
         with patch("app.api.routes.input.check_whisper_available", return_value=whisper_up), \
-             patch("app.api.routes.input.transcribe_audio_task") as mock_task, \
+             patch("app.services.input.transcribe_audio_task") as mock_task, \
              patch("pathlib.Path.write_bytes"):
             mock_task.delay.return_value = mock_result
             resp = client.post(
@@ -133,7 +127,7 @@ class TestSubmitVoiceInput:
         resp, _ = self._post(client, whisper_up=False)
         assert resp.status_code == 503
         body = resp.json()
-        assert body["error_code"] == "LLM_UNAVAILABLE"
+        assert body["error_code"] == "STT_UNAVAILABLE"
 
     def test_422_missing_audio_file(self, client):
         with patch("app.api.routes.input.check_whisper_available", return_value=True):
@@ -218,14 +212,14 @@ class TestTranscribeAudioTask:
         assert inp.status == InputStatus.failed
         assert "Cannot reach Whisper" in inp.error_detail
 
-    def test_connection_error_job_failed_with_llm_unavailable_code(self, db, test_engine):
+    def test_connection_error_job_failed_with_stt_unavailable_code(self, db, test_engine):
         inp, job = _seed_input_and_job(db)
 
         self._run_task(inp, job, test_engine, whisper_side_effect=ConnectionError("Cannot reach Whisper"))
 
         db.refresh(job)
         assert job.status == "failed"
-        assert job.error["error_code"] == "LLM_UNAVAILABLE"
+        assert job.error["error_code"] == "STT_UNAVAILABLE"
         assert "Cannot reach Whisper" in job.error["message"]
 
     def test_runtime_error_input_failed_error_detail(self, db, test_engine):
