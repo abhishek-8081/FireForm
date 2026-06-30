@@ -2,9 +2,19 @@ name: Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main,development]
+    paths:
+      - '**.py'
+      - 'requirements.txt'
+      - 'alembic.ini'
+      - '.github/workflows/tests.yml'
   pull_request:
     branches: [main,development]
+    paths:
+      - '**.py'
+      - 'requirements.txt'
+      - 'alembic.ini'
+      - '.github/workflows/tests.yml'
 
 jobs:
   test:
