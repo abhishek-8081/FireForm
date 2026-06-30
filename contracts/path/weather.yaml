@@ -5,7 +5,7 @@ forecast:
       Fetch hourly weather data for the given location and date range.
       Coordinates must be provided as decimal degrees (e.g. `40.7128` for latitude, `-74.0060` for longitude).
     tags:
-      - external-apis
+      - weather
     parameters:
       - name: latitude
         in: query

@@ -7,7 +7,7 @@ lookup_address:
       place name, state, county, and country.
       The list is ordered by relevance (most relevant first, up to 10 results).
     tags:
-      - external-apis
+      - zipcode
     parameters:
       - name: address
         in: query
