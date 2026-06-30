@@ -4,6 +4,7 @@
 # POST /api/v1/templates
 # PUT /api/v1/templates/{template_id}
 # GET /api/v1/templates/{template_id}/fields
+# POST /api/v1/templates/pdf
 
 templates:
   get:
@@ -300,6 +301,105 @@ template_fields:
                     height: 18.0
       "404":
         description: Template not found
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+templates_pdf:
+  post:
+    operationId: uploadTemplatePdf
+    summary: Upload a blank PDF for a template before defining its fields
+    description: |
+      Uploads the blank agency PDF that a template's field coordinates will be
+      written onto, and returns a `pdf_template_ref` plus the page geometry.
+
+      This is the first step of the template-authoring flow. The visual editor
+      renders the returned pages, the user draws a box per field, and the box
+      coordinates become each field's `layout`. The resulting `pdf_template_ref`
+      is then sent in the `POST /api/v1/templates` body. Upload precedes create
+      because the layout coordinates only have meaning relative to this PDF.
+
+      Page dimensions are returned in PDF points (1/72 inch, origin bottom-left)
+      so the editor can map canvas positions to the same coordinate system the
+      `layout` fields use.
+    tags:
+      - templates
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required:
+              - pdf_file
+            properties:
+              pdf_file:
+                type: string
+                format: binary
+                description: Blank fillable or flat PDF form. Max 50MB.
+    responses:
+      "201":
+        description: PDF stored and ready to be referenced by a template
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pdf_template_ref
+                - original_filename
+                - page_count
+                - pages
+              properties:
+                pdf_template_ref:
+                  type: string
+                  description: Opaque reference to the stored PDF, passed back in
+                    the template body as pdf_template_ref
+                original_filename:
+                  type: string
+                page_count:
+                  type: integer
+                pages:
+                  type: array
+                  description: Per-page geometry in PDF points, index 0 = first page
+                  items:
+                    type: object
+                    required:
+                      - page
+                      - width
+                      - height
+                    properties:
+                      page:
+                        type: integer
+                      width:
+                        type: number
+                      height:
+                        type: number
+            example:
+              pdf_template_ref: "templates/uploads/550e8400-e29b-41d4-a716-446655440080.pdf"
+              original_filename: "texas_sfm_incident.pdf"
+              page_count: 2
+              pages:
+                - page: 0
+                  width: 612.0
+                  height: 792.0
+                - page: 1
+                  width: 612.0
+                  height: 792.0
+      "400":
+        description: Missing file or malformed multipart request
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+      "413":
+        description: PDF exceeds the maximum allowed size
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+      "415":
+        description: Uploaded file is not a valid PDF
         content:
           application/json:
             schema:

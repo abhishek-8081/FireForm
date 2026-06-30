@@ -86,6 +86,8 @@ paths:
     $ref: "path/templates.yaml#/template_by_id"
   /api/v1/templates/{template_id}/fields:
     $ref: "path/templates.yaml#/template_fields"
+  /api/v1/templates/pdf:
+    $ref: "path/templates.yaml#/templates_pdf"
 
   # ── Layer 7: System ────────────────────────────────────────────
   /api/v1/health:
