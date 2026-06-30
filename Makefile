@@ -1,4 +1,4 @@
-.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean status ready-banner sync
+.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean status ready-banner sync docs
 
 COMPOSE     = docker compose -f docker/dev/compose.yml --env-file docker/.env.dev
 ENV_DEV     = docker/.env.dev
@@ -31,6 +31,7 @@ help:
 	@echo "make shell        - Open shell in running app container"
 	@echo "make pull-model   - Pull Ollama model from .env.dev ($(OLLAMA_MODEL))"
 	@echo "make test         - Run test suite"
+	@echo "make docs         - Serve interactive API docs from the OpenAPI contract"
 	@echo "make migrate      - Run pending Alembic migrations"
 	@echo "make migration    - Generate new migration (msg='description')"
 	@echo "make clean        - Stop containers (preserves volumes)"
@@ -104,6 +105,10 @@ pull-model:
 
 test:
 	@$(COMPOSE) exec -T app python3 -m pytest tests/ -v
+
+docs:
+	@echo "Serving Swagger UI from contracts/openapi.yaml at http://localhost:8088"
+	@npx --yes swagger-ui-watcher contracts/openapi.yaml --port 8088
 
 migrate:
 	@$(COMPOSE) exec -T app alembic upgrade head
