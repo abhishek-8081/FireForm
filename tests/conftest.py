@@ -55,6 +55,12 @@ def db():
         yield session
 
 
+@pytest.fixture
+def test_engine():
+    """Expose the shared in-memory engine for tests that need to open extra sessions."""
+    return _engine
+
+
 # ---------------------------------------------------------------------------
 # Minimal PDF bytes (valid 1-page blank PDF)
 # ---------------------------------------------------------------------------

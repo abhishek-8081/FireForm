@@ -81,3 +81,10 @@ def create_input(session: Session, input_obj: Input) -> Input:
 def get_input(session: Session, input_id: UUID) -> Input | None:
     return session.get(Input, input_id)
 
+
+def update_input(session: Session, input_obj: Input) -> Input:
+    session.add(input_obj)
+    session.commit()
+    session.refresh(input_obj)
+    return input_obj
+

@@ -8,6 +8,16 @@ from pydantic import BaseModel, Field
 from app.api.schemas.enums import InputStatus, InputType
 
 
+class VoiceInputResponse(BaseModel):
+    input_id: UUID
+    status: InputStatus
+    input_type: InputType
+    estimated_processing_seconds: int | None = None
+    created_at: datetime | None = None
+    job_id: str | None = None
+    poll_url: str | None = None
+
+
 class TextInputRequest(BaseModel):
     narrative: str = Field(min_length=20)
     station_id: str | None = None

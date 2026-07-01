@@ -1,18 +1,99 @@
+from datetime import date
+from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.exceptions import RequestValidationError
 from sqlmodel import Session
 
 from app.api.deps import get_db
 from app.api.schemas.enums import InputStatus
-from app.api.schemas.input import InputRecordResponse, TextInputRequest, TextInputResponse
-from app.core.config import INPUT_POLL_INTERVAL_SECONDS
+from app.api.schemas.input import (
+    InputRecordResponse,
+    TextInputRequest,
+    TextInputResponse,
+    VoiceInputResponse,
+)
+from app.core.config import (
+    ALLOWED_AUDIO_EXTENSIONS,
+    AUDIO_CONTENT_TYPES,
+    ESTIMATED_TRANSCRIPTION_SECONDS,
+    INPUT_POLL_INTERVAL_SECONDS,
+)
 from app.core.errors.base import AppError
 from app.db.repositories import create_input, get_input as repo_get_input
 from app.services.input import InputService
+from app.services.whisper import check_whisper_available
 
 router = APIRouter(prefix="/input", tags=["input"])
+
+_MAX_AUDIO_BYTES = 500 * 1024 * 1024  # 500 MB
+
+
+@router.post("/voice", response_model=VoiceInputResponse, status_code=201)
+def submit_voice_input(
+    audio_file: UploadFile = File(...),
+    station_id: str | None = Form(default=None),
+    responder_badge: str | None = Form(default=None),
+    incident_date_hint: date | None = Form(default=None),
+    db: Session = Depends(get_db),
+):
+    # 415 — format check (HTTP concern, before any I/O)
+    filename = audio_file.filename or ""
+    ext = Path(filename).suffix.lstrip(".").lower()
+    if not ext or ext not in ALLOWED_AUDIO_EXTENSIONS:
+        raise AppError(
+            "Audio format not supported. Accepted formats: wav, mp3, m4a, ogg, webm",
+            status_code=415,
+            error_code="UNSUPPORTED_FORMAT",
+            detail={"accepted_formats": list(AUDIO_CONTENT_TYPES)},
+        )
+
+    # 413 — size check: fast path via Content-Length (no read), fallback via len(bytes)
+    if audio_file.size is not None and audio_file.size > _MAX_AUDIO_BYTES:
+        raise AppError(
+            "Audio file exceeds maximum size of 500MB",
+            status_code=413,
+            error_code="FILE_TOO_LARGE",
+            detail={"max_size_bytes": _MAX_AUDIO_BYTES, "received_size_bytes": audio_file.size},
+        )
+    content = audio_file.file.read()
+    if len(content) > _MAX_AUDIO_BYTES:
+        raise AppError(
+            "Audio file exceeds maximum size of 500MB",
+            status_code=413,
+            error_code="FILE_TOO_LARGE",
+            detail={"max_size_bytes": _MAX_AUDIO_BYTES, "received_size_bytes": len(content)},
+        )
+
+    # 503 — Whisper availability (HTTP concern)
+    if not check_whisper_available():
+        raise AppError(
+            "Whisper transcription service is not available",
+            status_code=503,
+            error_code="STT_UNAVAILABLE",
+        )
+
+    svc = InputService()
+    record, job = svc.process_voice_upload(
+        session=db,
+        audio_content=content,
+        ext=ext,
+        filename=filename,
+        station_id=station_id,
+        responder_badge=responder_badge,
+        incident_date_hint=incident_date_hint,
+    )
+
+    return VoiceInputResponse(
+        input_id=record.input_id,
+        status=record.status,
+        input_type=record.input_type,
+        job_id=job.job_id,
+        poll_url=f"/api/v1/input/{record.input_id}",
+        estimated_processing_seconds=ESTIMATED_TRANSCRIPTION_SECONDS,
+        created_at=record.created_at,
+    )
 
 
 @router.post("/text", response_model=TextInputResponse, status_code=201)

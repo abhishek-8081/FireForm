@@ -66,3 +66,22 @@ FIREFORM_API_KEY = os.getenv("FIREFORM_API_KEY", "")
 
 # --- Data Retention --------------------------------------------------------
 RETENTION_PERIOD_DAYS = int(os.getenv("RETENTION_PERIOD_DAYS", "30"))
+
+# --- Audio storage --------------------------------------------------------
+# Voice input audio files land here: {AUDIO_DIR}/{input_id}.{ext}
+AUDIO_DIR = DATA_DIR / "audio"
+
+# Advisory estimate returned in VoiceInputResponse.estimated_processing_seconds.
+ESTIMATED_TRANSCRIPTION_SECONDS = int(os.getenv("ESTIMATED_TRANSCRIPTION_SECONDS", "30"))
+
+# Canonical audio format mapping — single source of truth for both the route
+# (membership check, 415 detail list) and the task (content-type lookup).
+# Dict insertion order gives the stable list shown in error responses.
+AUDIO_CONTENT_TYPES: dict[str, str] = {
+    "wav": "audio/wav",
+    "mp3": "audio/mpeg",
+    "m4a": "audio/m4a",
+    "ogg": "audio/ogg",
+    "webm": "audio/webm",
+}
+ALLOWED_AUDIO_EXTENSIONS: frozenset[str] = frozenset(AUDIO_CONTENT_TYPES)

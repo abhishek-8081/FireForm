@@ -89,14 +89,14 @@ voice:
                   - ogg
                   - webm
       "503":
-        description: Ollama/Whisper service unavailable
+        description: Whisper transcription service unavailable
         content:
           application/json:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
             example:
-              error_code: "LLM_UNAVAILABLE"
-              message: "Ollama transcription service is not available"
+              error_code: "STT_UNAVAILABLE"
+              message: "Whisper transcription service is not available"
               retry_after_seconds: 30
 
 text:
