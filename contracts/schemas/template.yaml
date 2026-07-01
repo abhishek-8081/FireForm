@@ -7,14 +7,17 @@ TemplateSummary:
       type: string
       format: uuid
     form_type:
-      $ref: "../schemas/enums.yaml#/FormType"
+      type: string
+      description: Unique form type identifier (built-in or custom jurisdiction)
     display_name:
       type: string
     jurisdiction:
       type: string
+      nullable: true
       description: Jurisdiction code (e.g. "US-Federal", "US-CA", "US-GA")
     agency_type:
       type: string
+      nullable: true
     version:
       type: string
     last_updated:
@@ -34,9 +37,7 @@ CreateTemplateRequest:
   required:
     - form_type
     - display_name
-    - jurisdiction
     - fields
-    - field_mappings_from_canonical
   properties:
     form_type:
       type: string
@@ -45,19 +46,16 @@ CreateTemplateRequest:
       type: string
     jurisdiction:
       type: string
+      nullable: true
+      description: Jurisdiction code. Optional — the visual editor may register a
+        template before jurisdiction is assigned.
     agency_type:
       type: string
+      nullable: true
     fields:
       type: array
       items:
         $ref: "#/TemplateField"
-    field_mappings_from_canonical:
-      type: object
-      additionalProperties:
-        type: string
-      description: |
-        Mapping from canonical FireForm JSON paths to this template's field names.
-        Key = canonical path (e.g. "fire.cause_category"), value = template field name.
     source_standard:
       type: string
       nullable: true
@@ -65,7 +63,7 @@ CreateTemplateRequest:
     pdf_template_ref:
       type: string
       nullable: true
-      description: Reference to the PDF template file
+      description: Reference to the PDF template file the layout coordinates apply to
 
 Template:
   allOf:
@@ -136,9 +134,70 @@ TemplateField:
         type: string
       nullable: true
       description: Valid values for enum fields
-    canonical_mapping:
+    incident_mapping:
       type: string
-      description: JSON path in canonical FireForm schema this field maps from
+      nullable: true
+      description: |
+        JSON path in the FireForm incident schema this field pulls its value from
+        (e.g. "fire.cause_category"). Null for a static field. Exactly one of
+        incident_mapping or static_text is expected.
+    static_text:
+      type: string
+      nullable: true
+      description: |
+        Fixed text drawn into the field instead of a mapped value. Null for a
+        data-mapped field. Mutually exclusive with incident_mapping.
     default_value:
       nullable: true
-      description: Default value if canonical field is null
+      description: Default value if the mapped incident field is null
+    layout:
+      nullable: true
+      description: Visual placement of the field on the PDF. Null for fields with
+        no fixed position.
+      allOf:
+        - $ref: "#/TemplateFieldLayout"
+
+TemplateFieldLayout:
+  type: object
+  description: |
+    Visual placement of a field on the PDF page. Coordinates are in PDF points
+    with the origin at the bottom-left of the page, so the field box runs from
+    start = (x, y) to end = (x + width, y + height). The editor is responsible
+    for converting rendered-canvas pixels to PDF points before saving.
+  required:
+    - page
+    - x
+    - y
+    - width
+    - height
+  properties:
+    page:
+      type: integer
+      description: Zero-based page index
+    x:
+      type: number
+      description: Lower-left X of the box, in PDF points
+    y:
+      type: number
+      description: Lower-left Y of the box, in PDF points (origin bottom-left)
+    width:
+      type: number
+    height:
+      type: number
+    font:
+      type: string
+      default: Helvetica
+    font_size:
+      type: number
+      default: 10
+    color:
+      type: string
+      default: "#000000"
+      description: Hex color, e.g. "#000000"
+    align:
+      type: string
+      enum:
+        - left
+        - center
+        - right
+      default: left
