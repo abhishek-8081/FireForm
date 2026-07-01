@@ -31,8 +31,10 @@ tags:
     description: Health checks, schema introspection, and system status
   - name: jobs
     description: Cross-cutting async job status polling
-  - name: external-apis
-    description: Integrations with external APIs (Weather, Zipcode)
+  - name: weather
+    description: Weather forecast lookup via external API
+  - name: zipcode
+    description: Address and postal code geocoding via external API
 
 paths:
   # ── Layer 1: Input ──────────────────────────────────────────────
@@ -104,7 +106,5 @@ paths:
   # ── Layer 9: External APIs ─────────────────────────────────────
   /api/v1/weather/forecast:
     $ref: "path/weather.yaml#/forecast"
-  /api/v1/zipcode/postal-code:
-    $ref: "path/zipcode.yaml#/postal_code"
-  /api/v1/zipcode/location:
-    $ref: "path/zipcode.yaml#/location"
+  /api/v1/zipcode/lookup-address:
+    $ref: "path/zipcode.yaml#/lookup_address"
