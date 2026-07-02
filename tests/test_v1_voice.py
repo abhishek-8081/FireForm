@@ -5,7 +5,6 @@ Task tests: called directly with an injected test session and mocked call_whispe
 """
 
 import io
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

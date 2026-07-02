@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from sqlmodel import Session
 
 from app.api.schemas.enums import InputStatus, InputType
-from app.core.config import AUDIO_CONTENT_TYPES, AUDIO_DIR
+from app.core.config import AUDIO_DIR
 from app.db.repositories import create_input, create_job, update_job
 from app.models import Input, Job
 from app.tasks.transcribe import transcribe_audio_task
