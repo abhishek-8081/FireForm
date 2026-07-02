@@ -87,6 +87,7 @@ class TestDeleteTemplate:
         out_pdf.write_bytes(b"%PDF-1.4 filled")
 
         tpl_id = _seed_template(client, pdf_path="tpl.pdf")
+        _seed_submission(db, tpl_id, output_pdf_path="filled.pdf")
 
         client.delete(f"{API_PREFIX}/templates/{tpl_id}")
         assert not out_pdf.exists()
