@@ -4,7 +4,6 @@ Uses the shared in-memory SQLite engine from conftest.py.  No Ollama or
 Whisper involvement — text input is fully synchronous.
 """
 
-import pytest
 
 TEXT_URL = "/api/v1/input/text"
 INPUT_URL = "/api/v1/input"

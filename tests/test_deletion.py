@@ -2,10 +2,7 @@
 POST /api/v1/forms/purge, and API-key access control.
 """
 
-import io
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -90,7 +87,6 @@ class TestDeleteTemplate:
         out_pdf.write_bytes(b"%PDF-1.4 filled")
 
         tpl_id = _seed_template(client, pdf_path="tpl.pdf")
-        sub_id = _seed_submission(db, tpl_id, output_pdf_path="filled.pdf")
 
         client.delete(f"{API_PREFIX}/templates/{tpl_id}")
         assert not out_pdf.exists()
@@ -249,7 +245,6 @@ class TestApiKeyAccessControl:
         assert resp.status_code == 401
 
     def test_purge_with_valid_key(self, client, db):
-        tpl_id = _seed_template(client)
         resp = client.post(
             f"{API_PREFIX}/forms/purge?days=30",
             headers={"X-API-Key": "secret-test-key"},
