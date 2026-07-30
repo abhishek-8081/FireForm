@@ -173,7 +173,7 @@ def test_extractions_columns(alembic_cfg, alembic_engine):
         "completed_at",
         "model_used",
         "processing_time_seconds",
-        "incident_contract",
+        "partial_result",
         "corrections",
         "error_type",
         "error_detail",
@@ -207,6 +207,26 @@ def test_incidents_columns(alembic_cfg, alembic_engine):
         "incident_date",
         "tags",
         "notes",
+        "incident_contract",
+        "incident_category",
+        "incident_datetime",
+        "city",
+        "state",
+        "country",
+        "civilian_injuries",
+        "civilian_fatalities",
+        "responder_injuries",
+        "responder_fatalities",
+        "people_rescued",
+        "people_evacuated",
+        "structures_destroyed",
+        "area_burned_ha",
+        "total_loss_amount",
+        "total_loss_currency",
+        "call_to_arrival_seconds",
+        "turnout_seconds_first_unit",
+        "travel_seconds_first_unit",
+        "on_scene_duration_seconds",
         "created_at",
         "updated_at",
         "deleted_at",
@@ -292,10 +312,10 @@ def test_reports_no_fk(alembic_cfg, alembic_engine):
     assert len(fks) == 0
 
 
-def test_downgrade_002(alembic_cfg, alembic_engine):
-    """Downgrade by one step removes only the 002 tables, leaving 001 tables intact."""
+def test_downgrade_v1_tables(alembic_cfg, alembic_engine):
+    """Downgrade to 001 removes the v1 tables, leaving the 001 tables intact."""
     command.upgrade(alembic_cfg, "head")
-    command.downgrade(alembic_cfg, "-1")
+    command.downgrade(alembic_cfg, "001")
 
     inspector = inspect(alembic_engine)
     tables = inspector.get_table_names()
