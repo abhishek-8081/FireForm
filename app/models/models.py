@@ -10,6 +10,7 @@ from app.api.schemas.enums import (
     ExtractionStatus,
     FormStatus,
     FormType,
+    IncidentCategory,
     InputStatus,
     InputType,
     JobStatus,
@@ -91,9 +92,10 @@ class Extraction(SQLModel, table=True):
     completed_at: datetime | None = None
     model_used: str | None = None
     processing_time_seconds: float | None = None
-    # Full IncidentContract superset blob; stores partial result while processing,
-    # final canonical JSON when status=completed.
-    incident_contract: dict | None = Field(default=None, sa_column=Column(JSON))
+    # Transient contract blob held only while the job runs. Cleared once the
+    # extraction completes and the contract is written to the incident row,
+    # which is the single store. Extractions keep no copy of the final contract.
+    partial_result: dict | None = Field(default=None, sa_column=Column(JSON))
     # Audit trail of manual corrections applied via PATCH /extract/{id}.
     corrections: list | None = Field(default=None, sa_column=Column(JSON))
     error_type: str | None = None
@@ -116,6 +118,33 @@ class Incident(SQLModel, table=True):
     incident_date: date | None = None
     tags: list | None = Field(default=None, sa_column=Column(JSON))
     notes: str | None = None
+    # The single store of the incident contract. Created as a draft when
+    # extraction completes; PATCH /extract writes here, form generation reads
+    # here. Nothing else keeps a copy.
+    incident_contract: dict | None = Field(default=None, sa_column=Column(JSON))
+    # Promoted scalars, recomputed server-side from the contract on every
+    # document change. All nullable; clients never write them directly.
+    incident_category: IncidentCategory | None = Field(
+        default=None, sa_column=Column(AutoString, nullable=True)
+    )
+    incident_datetime: datetime | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
+    civilian_injuries: int | None = None
+    civilian_fatalities: int | None = None
+    responder_injuries: int | None = None
+    responder_fatalities: int | None = None
+    people_rescued: int | None = None
+    people_evacuated: int | None = None
+    structures_destroyed: int | None = None
+    area_burned_ha: float | None = None
+    total_loss_amount: float | None = None
+    total_loss_currency: str | None = None
+    call_to_arrival_seconds: int | None = None
+    turnout_seconds_first_unit: int | None = None
+    travel_seconds_first_unit: int | None = None
+    on_scene_duration_seconds: int | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     deleted_at: datetime | None = None
