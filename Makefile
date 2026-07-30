@@ -114,7 +114,8 @@ migrate:
 	@$(COMPOSE) exec -T app alembic upgrade head
 
 migration:
-	@$(COMPOSE) exec -T app alembic revision --autogenerate -m "$(msg)"
+	@test -n "$(rev)" || { echo "rev is required, e.g. make migration rev=003 msg=\"...\""; exit 1; }
+	@$(COMPOSE) exec -T app alembic revision --autogenerate --rev-id "$(rev)" -m "$(msg)"
 
 clean:
 	@$(COMPOSE) down
