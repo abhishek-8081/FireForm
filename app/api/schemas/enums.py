@@ -114,3 +114,10 @@ class OutputFormat(str, Enum):
     pdf = "pdf"
     json = "json"
     both = "both"
+
+
+class FieldSource(str, Enum):
+    schema = "schema"
+    static = "static"
+    manual = "manual"
+    open = "open"
