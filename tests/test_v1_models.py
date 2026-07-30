@@ -15,6 +15,7 @@ from app.api.schemas.enums import (
     ExtractionStatus,
     FormStatus,
     FormType,
+    IncidentCategory,
     InputStatus,
     InputType,
     JobStatus,
@@ -123,21 +124,21 @@ class TestExtractionModel:
         assert isinstance(ext.extract_id, UUID)
         assert ext.input_id == inp.input_id
         assert ext.status == ExtractionStatus.processing
-        assert ext.incident_contract is None
+        assert ext.partial_result is None
         assert ext.corrections is None
         assert ext.started_at is None
 
-    def test_incident_contract_json_roundtrip(self, db):
+    def test_partial_result_json_roundtrip(self, db):
         inp = _input(db)
-        contract = {
+        partial = {
             "schema_version": "1.1.0",
             "incident": {"name": "Structure Fire Main St", "types": []},
             "location": {"address": "123 Main St", "state": "CA"},
         }
-        ext = _extraction(db, inp.input_id, incident_contract=contract)
+        ext = _extraction(db, inp.input_id, partial_result=partial)
         fetched = db.get(Extraction, ext.extract_id)
-        assert fetched.incident_contract["schema_version"] == "1.1.0"
-        assert fetched.incident_contract["location"]["state"] == "CA"
+        assert fetched.partial_result["schema_version"] == "1.1.0"
+        assert fetched.partial_result["location"]["state"] == "CA"
 
     def test_corrections_json_roundtrip(self, db):
         inp = _input(db)
@@ -236,6 +237,53 @@ class TestIncidentModel:
         assert row.incident_type is None
         assert row.incident_date is None
         assert row.notes is None
+
+    def test_incident_contract_json_roundtrip(self, db):
+        contract = {
+            "schema_version": "1.1.0",
+            "incident": {"name": "Structure Fire Main St", "types": []},
+            "location": {"address": "123 Main St", "state": "CA"},
+        }
+        row = self._make(db, incident_contract=contract)
+        fetched = db.get(Incident, row.incident_id)
+        assert fetched.incident_contract["schema_version"] == "1.1.0"
+        assert fetched.incident_contract["location"]["state"] == "CA"
+
+    def test_promoted_columns_default_none(self, db):
+        row = self._make(db)
+        assert row.incident_contract is None
+        assert row.incident_category is None
+        assert row.incident_datetime is None
+        assert row.city is None
+        assert row.civilian_injuries is None
+        assert row.area_burned_ha is None
+        assert row.total_loss_amount is None
+        assert row.call_to_arrival_seconds is None
+
+    def test_promoted_columns_roundtrip(self, db):
+        row = self._make(
+            db,
+            incident_category=IncidentCategory.fire,
+            incident_datetime=datetime(2026, 5, 15, 14, 30, tzinfo=timezone.utc),
+            city="Oakland",
+            state="CA",
+            country="US",
+            civilian_injuries=2,
+            responder_fatalities=0,
+            people_evacuated=40,
+            structures_destroyed=3,
+            area_burned_ha=12.5,
+            total_loss_amount=250000.0,
+            total_loss_currency="USD",
+            call_to_arrival_seconds=312,
+        )
+        fetched = db.get(Incident, row.incident_id)
+        assert fetched.incident_category == IncidentCategory.fire
+        assert fetched.city == "Oakland"
+        assert fetched.civilian_injuries == 2
+        assert fetched.area_burned_ha == pytest.approx(12.5)
+        assert fetched.total_loss_currency == "USD"
+        assert fetched.call_to_arrival_seconds == 312
 
 
 # ---------------------------------------------------------------------------
