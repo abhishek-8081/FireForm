@@ -34,6 +34,7 @@ help:
 	@echo "make docs         - Serve interactive API docs from the OpenAPI contract"
 	@echo "make migrate      - Run pending Alembic migrations"
 	@echo "make migration    - Generate new migration (msg='description')"
+	@echo "make generate-contract-models - Regenerate Pydantic models from the incident contract"
 	@echo "make clean        - Stop containers (preserves volumes)"
 	@echo "make super-clean  - [CAUTION] Stop containers, delete volumes, prune Docker"
 
@@ -116,6 +117,9 @@ migrate:
 migration:
 	@test -n "$(rev)" || { echo "rev is required, e.g. make migration rev=003 msg=\"...\""; exit 1; }
 	@$(COMPOSE) exec -T app alembic revision --autogenerate --rev-id "$(rev)" -m "$(msg)"
+
+generate-contract-models:
+	@$(COMPOSE) exec -T app sh -c "uv pip install --system -r requirements-dev.txt && python3 scripts/generate_contract_models.py"
 
 clean:
 	@$(COMPOSE) down
