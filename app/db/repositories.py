@@ -2,7 +2,8 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
-from app.models import Template, FormSubmission, Job, Input
+from app.models import Template, FormSubmission, Job, Input, Extraction, Incident
+from app.api.schemas.enums import ReportStatus
 
 # Templates
 def create_template(session: Session, template: Template) -> Template:
@@ -87,4 +88,57 @@ def update_input(session: Session, input_obj: Input) -> Input:
     session.commit()
     session.refresh(input_obj)
     return input_obj
+
+
+# Extractions
+def create_extraction(session: Session, extraction: Extraction) -> Extraction:
+    session.add(extraction)
+    session.commit()
+    session.refresh(extraction)
+    return extraction
+
+
+def get_extraction(session: Session, extract_id: UUID) -> Extraction | None:
+    return session.get(Extraction, extract_id)
+
+
+def update_extraction(session: Session, extraction: Extraction) -> Extraction:
+    session.add(extraction)
+    session.commit()
+    session.refresh(extraction)
+    return extraction
+
+
+# Incidents
+def create_incident(session: Session, incident: Incident) -> Incident:
+    session.add(incident)
+    session.commit()
+    session.refresh(incident)
+    return incident
+
+
+def get_incident(session: Session, incident_id: UUID) -> Incident | None:
+    return session.get(Incident, incident_id)
+
+
+def get_incident_by_extract(session: Session, extract_id: UUID) -> Incident | None:
+    statement = select(Incident).where(Incident.extract_id == extract_id)
+    return session.exec(statement).first()
+
+
+def update_incident(session: Session, incident: Incident) -> Incident:
+    session.add(incident)
+    session.commit()
+    session.refresh(incident)
+    return incident
+
+
+def create_draft_incident(session: Session, extract_id: UUID) -> Incident:
+    """Create the draft incident row linked to a completed extraction.
+
+    Called when an extraction completes: the new row owns the contract document
+    and starts in draft status. POST /incidents later finalizes this same row.
+    """
+    incident = Incident(extract_id=extract_id, status=ReportStatus.draft)
+    return create_incident(session, incident)
 
