@@ -39,19 +39,11 @@ paths:
   /api/v1/input/{input_id}:
     $ref: "path/input.yaml#/input_by_id"
 
-  # ── Layer 3: Form Generation ───────────────────────────────────
-  /api/v1/forms/generate/all:
-    $ref: "path/forms.yaml#/generate_all"
-  /api/v1/forms/generate/{form_type}:
-    $ref: "path/forms.yaml#/generate_single"
-  /api/v1/forms/{form_id}:
-    $ref: "path/forms.yaml#/form_by_id"
-  /api/v1/forms/{form_id}/pdf:
-    $ref: "path/forms.yaml#/form_pdf"
-  /api/v1/forms/{form_id}/json:
-    $ref: "path/forms.yaml#/form_json"
-  /api/v1/forms/batch/{batch_id}:
-    $ref: "path/forms.yaml#/batch_by_id"
+  # ── Layer 3: Form Fill ──────────────────────────────────────────
+  /api/v1/forms/fill:
+    $ref: "path/forms.yaml#/fill"
+  /api/v1/forms/jobs:
+    $ref: "path/forms.yaml#/async_fill"
 
   # ── Layer 6: Templates & Configuration ─────────────────────────
   /api/v1/templates:
