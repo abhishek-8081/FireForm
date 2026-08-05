@@ -17,6 +17,7 @@ from app.core.errors.base import AppError
 from app.db.repositories import create_form, get_template, get_form_submission, delete_form_submission
 from app.models import FormSubmission, Template
 from app.services.controller import Controller
+from app.services.input import InputService
 
 PROJECT_ROOT = BASE_DIR
 
@@ -46,18 +47,19 @@ def fill_form(form: FormFill, db: Session = Depends(get_db)):
     if not fetched_template:
         raise AppError("Template not found", status_code=404, error_code="TEMPLATE_NOT_FOUND")
 
+    transcript = InputService().resolve_transcript(db, form.input_id)
+
     controller = Controller()
     try:
         path = controller.fill_form(
-            user_input=form.input_text,
+            user_input=transcript,
             fields=fetched_template.fields,
             pdf_form_path=fetched_template.pdf_path,
             model=form.model,
         )
 
-        # `model` is a runtime override, not a column — keep it out of the DB row.
         submission = FormSubmission(
-            **form.model_dump(exclude={"model"}), output_pdf_path=path
+            template_id=form.template_id, input_text=transcript, output_pdf_path=path
         )
         return create_form(db, submission)
     except Exception as e:
