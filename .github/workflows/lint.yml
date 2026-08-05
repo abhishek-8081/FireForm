@@ -23,7 +23,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install linter
-        run: uv pip install --system ruff
+        run: uv pip install --system ruff==0.16.1
 
       - name: Run linter
         run: |
