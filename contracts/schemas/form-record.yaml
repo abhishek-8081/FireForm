@@ -4,14 +4,17 @@ FormFillRequest:
   type: object
   required:
     - template_id
-    - input_text
+    - input_id
   properties:
     template_id:
       type: integer
       description: ID of the template to fill
-    input_text:
+    input_id:
       type: string
-      description: Transcript text the LLM extracts this template's field values from
+      format: uuid
+      description: ID of a stored input (see POST /input/text, POST /input/voice)
+        whose transcript is used to fill this template. The input must have
+        status "ready".
     model:
       type: string
       nullable: true
@@ -39,7 +42,7 @@ AsyncFormFillRequest:
   type: object
   required:
     - template_ids
-    - input_text
+    - input_id
   properties:
     template_ids:
       type: array
@@ -47,9 +50,12 @@ AsyncFormFillRequest:
         type: integer
       description: IDs of the templates to fill. One job is queued per template,
         each running the same transcript against that template's field dictionary.
-    input_text:
+    input_id:
       type: string
-      description: Transcript text the LLM extracts each template's field values from
+      format: uuid
+      description: ID of a stored input (see POST /input/text, POST /input/voice)
+        whose transcript is used to fill each template. The input must have
+        status "ready".
     model:
       type: string
       nullable: true
