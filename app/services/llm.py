@@ -9,6 +9,14 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
+def check_ollama_available() -> bool:
+    """Return True if the Ollama server responds with a successful status."""
+    try:
+        return requests.get(f"{OLLAMA_HOST}/api/tags", timeout=3).ok
+    except requests.exceptions.RequestException:
+        return False
+
+
 class LLM:
     def __init__(self, transcript_text: str=None, target_fields: list=None, json_dict: dict=None, model: str=None):
         self._transcript_text = transcript_text

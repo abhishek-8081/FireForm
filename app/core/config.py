@@ -58,6 +58,13 @@ RETRY_AFTER_SECONDS = 30
 # or transcribing. Value matches the contract example (contracts/path/input.yaml).
 INPUT_POLL_INTERVAL_SECONDS = 5
 
+# Polling hint returned by GET /extract/{id} while an extraction is still
+# processing. Matches the contract example (contracts/path/extraction.yaml).
+EXTRACTION_POLL_INTERVAL_SECONDS = 5
+
+# Advisory estimate returned in the 202 body of POST /extract/{input_id}.
+ESTIMATED_EXTRACTION_SECONDS = int(os.getenv("ESTIMATED_EXTRACTION_SECONDS", "60"))
+
 # --- API Versioning -------------------------------------------------------
 API_PREFIX = "/api/v1"
 

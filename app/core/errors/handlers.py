@@ -1,9 +1,28 @@
+import json
+
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.config import RETRY_AFTER_SECONDS
 from app.core.errors.base import AppError
+
+
+def _jsonable(value):
+    """Return value untouched if JSON-serializable, else a string form.
+
+    FastAPI puts the offending input on each validation error. When a JSON-body
+    endpoint is called with the wrong content-type, that input is the raw
+    request body as bytes, which JSONResponse cannot encode. Coerce anything
+    non-serializable so the 422 renders instead of turning into a 500.
+    """
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, ValueError):
+        if isinstance(value, bytes):
+            return value.decode("utf-8", "replace")
+        return str(value)
 
 
 def register_exception_handlers(app):
@@ -25,7 +44,7 @@ def register_exception_handlers(app):
             validation_errors.append({
                 "field": field or None,
                 "issue": error.get("msg"),
-                "value": error.get("input"),
+                "value": _jsonable(error.get("input")),
             })
         return JSONResponse(
             status_code=422,

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from app.api.schemas.enums import FieldSource
 from app.api.schemas.incident_contract import IncidentContract
@@ -46,6 +46,20 @@ class ExtractionRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------
+
+class ExtractionJobResponse(BaseModel):
+    """202 body for POST /extract/{input_id}. Carries the ids the client needs
+    to poll the extraction plus the underlying async job."""
+
+    extract_id: UUID
+    input_id: UUID
+    job_id: str
+    job_type: str = "extraction"
+    status: str
+    queued_at: datetime | None = None
+    estimated_seconds: int | None = None
+    poll_url: str
+
 
 class Correction(BaseModel):
     """One manual correction applied to the contract via PATCH."""

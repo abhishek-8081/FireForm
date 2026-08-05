@@ -102,6 +102,11 @@ def get_extraction(session: Session, extract_id: UUID) -> Extraction | None:
     return session.get(Extraction, extract_id)
 
 
+def get_extraction_by_input(session: Session, input_id: UUID) -> Extraction | None:
+    statement = select(Extraction).where(Extraction.input_id == input_id)
+    return session.exec(statement).first()
+
+
 def update_extraction(session: Session, extraction: Extraction) -> Extraction:
     session.add(extraction)
     session.commit()
