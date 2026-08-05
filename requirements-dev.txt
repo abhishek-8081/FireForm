@@ -2,4 +2,4 @@
 # datamodel-code-generator turns the incident contract into Pydantic models
 # (see scripts/generate_contract_models.py, run via `make generate-contract-models`).
 datamodel-code-generator==0.25.9
-ruff==0.6.9
+ruff==0.16.1
