@@ -44,8 +44,16 @@ class TestDBModels:
         db.commit()
         db.refresh(tpl)
 
+        input_record = Input(
+            input_type=InputType.text, status=InputStatus.ready, transcript="John Doe, firefighter"
+        )
+        db.add(input_record)
+        db.commit()
+        db.refresh(input_record)
+
         sub = FormSubmission(
             template_id=tpl.id,
+            input_id=input_record.input_id,
             input_text="John Doe, firefighter",
             output_pdf_path="src/outputs/filled.pdf",
         )
@@ -56,6 +64,7 @@ class TestDBModels:
         fetched = db.get(FormSubmission, sub.id)
         assert fetched is not None
         assert fetched.template_id == tpl.id
+        assert fetched.input_id == input_record.input_id
         assert fetched.input_text == "John Doe, firefighter"
         assert fetched.created_at is not None
 
@@ -207,6 +216,9 @@ class TestFormEndpoints:
         assert data["input_text"] == "The employee is John Doe, email jdoe@ucsc.edu"
         assert data["output_pdf_path"] == "src/outputs/filled_output.pdf"
         mock_controller["form_ctrl"].fill_form.assert_called_once()
+
+        fetched = db.get(FormSubmission, data["id"])
+        assert fetched.input_id == input_id
 
     def test_fill_form_missing_template(self, client, mock_controller):
         resp = client.post(f"{API_PREFIX}/forms/fill", json={
@@ -437,4 +449,5 @@ class TestE2EPipeline:
         db_forms = list(db.exec(select(FormSubmission)))
         assert len(db_forms) == 1
         assert db_forms[0].template_id == template_id
+        assert db_forms[0].input_id == input_record.input_id
         assert "Jane Smith" in db_forms[0].input_text

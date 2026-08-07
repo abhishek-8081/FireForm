@@ -44,7 +44,7 @@ def submit_async_form_fill(form: AsyncFormFill, db: Session = Depends(get_db)):
 
     jobs: list[AsyncJobSubmitResponse] = []
     for tid in form.template_ids:
-        result = fill_form_task.delay(tid, transcript, form.model)
+        result = fill_form_task.delay(tid, transcript, str(form.input_id), form.model)
         job = Job(
             celery_task_id=result.id,
             job_type="form_generation",

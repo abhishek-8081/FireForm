@@ -59,7 +59,10 @@ def fill_form(form: FormFill, db: Session = Depends(get_db)):
         )
 
         submission = FormSubmission(
-            template_id=form.template_id, input_text=transcript, output_pdf_path=path
+            template_id=form.template_id,
+            input_id=form.input_id,
+            input_text=transcript,
+            output_pdf_path=path,
         )
         return create_form(db, submission)
     except Exception as e:

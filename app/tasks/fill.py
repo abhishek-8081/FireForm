@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
 
 from app.core.celery import celery_app
 from app.db.database import get_session
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name="fill_form")
-def fill_form_task(self, template_id: int, input_text: str, model: str | None = None):
+def fill_form_task(self, template_id: int, input_text: str, input_id_str: str, model: str | None = None):
     session = next(get_session())
     try:
         job = get_job_by_celery_id(session, self.request.id)
@@ -37,6 +38,7 @@ def fill_form_task(self, template_id: int, input_text: str, model: str | None = 
 
         submission = FormSubmission(
             template_id=template_id,
+            input_id=UUID(input_id_str),
             input_text=input_text,
             output_pdf_path=path,
         )

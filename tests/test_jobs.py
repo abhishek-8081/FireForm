@@ -43,7 +43,7 @@ class TestJobEndpoints:
         assert data["jobs"][0]["status"] == "queued"
         assert "job_id" in data["jobs"][0]
         assert data["jobs"][0]["poll_url"].startswith(f"{API_PREFIX}/jobs/")
-        mock_task.delay.assert_called_once_with(tpl_id, "John Doe firefighter", None)
+        mock_task.delay.assert_called_once_with(tpl_id, "John Doe firefighter", str(input_id), None)
 
     @patch("app.api.routes.jobs.fill_form_task")
     def test_submit_async_batch(self, mock_task, client, db):
@@ -153,7 +153,7 @@ class TestJobEndpoints:
             "model": "mistral:latest",
         })
         assert resp.status_code == 200
-        mock_task.delay.assert_called_once_with(tpl_id, "test", "mistral:latest")
+        mock_task.delay.assert_called_once_with(tpl_id, "test", str(input_id), "mistral:latest")
 
     def test_submit_empty_template_ids(self, client, db):
         input_id = self._seed_input(db, transcript="test")
