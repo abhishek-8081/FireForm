@@ -167,7 +167,7 @@ class TestPurgeSubmissions:
         assert resp.json()["purged_count"] == 0
 
     def test_purge_removes_output_pdf_file(self, client, db, tmp_path, monkeypatch):
-        monkeypatch.setattr("app.api.routes.forms.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr("app.services.form.PROJECT_ROOT", tmp_path)
         out_pdf = tmp_path / "old_filled.pdf"
         out_pdf.write_bytes(b"%PDF-1.4")
 
