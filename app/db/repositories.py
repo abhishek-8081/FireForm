@@ -83,6 +83,16 @@ def delete_template(session: Session, template: Template) -> None:
     session.commit()
 
 
+def get_submissions_by_template(session: Session, template_id: int) -> list[FormSubmission]:
+    statement = select(FormSubmission).where(FormSubmission.template_id == template_id)
+    return list(session.exec(statement))
+
+
+def get_jobs_by_template(session: Session, template_id: int) -> list[Job]:
+    statement = select(Job).where(Job.template_id == template_id)
+    return list(session.exec(statement))
+
+
 def get_form_submission(session: Session, submission_id: int) -> FormSubmission | None:
     return session.get(FormSubmission, submission_id)
 
