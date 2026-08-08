@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -25,6 +26,27 @@ def create_form(session: Session, form: FormSubmission) -> FormSubmission:
     session.commit()
     session.refresh(form)
     return form
+
+
+def get_submissions(session: Session) -> list[tuple[FormSubmission, str | None]]:
+    statement = (
+        select(FormSubmission, Template.name)
+        .join(Template, FormSubmission.template_id == Template.id, isouter=True)
+        .order_by(FormSubmission.created_at.desc(), FormSubmission.id.desc())
+    )
+    return list(session.exec(statement).all())
+
+
+def get_submissions_with_template(session: Session) -> list[tuple[FormSubmission, str | None]]:
+    statement = select(FormSubmission, Template.name).join(
+        Template, FormSubmission.template_id == Template.id, isouter=True
+    )
+    return list(session.exec(statement).all())
+
+
+def get_submissions_before(session: Session, cutoff: datetime) -> list[FormSubmission]:
+    statement = select(FormSubmission).where(FormSubmission.created_at < cutoff)
+    return list(session.exec(statement))
 
 
 # Jobs
