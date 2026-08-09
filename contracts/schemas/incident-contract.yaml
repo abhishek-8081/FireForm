@@ -24,6 +24,13 @@
 #   grows over time (including non-English terms) without schema changes.
 # - All date-times are RFC 3339 with UTC offset; incident.timezone holds the
 #   IANA zone for local wall-clock rendering.
+# - Each top-level chunk carries x-extraction, telling the extraction worker
+#   how to treat it: core runs on every incident, gated runs only when the
+#   narrative shows evidence for it, background runs after the rest, manual is
+#   never sent to the model (signatures, record ids, authored reflections).
+#   Gated chunks list the evidence words in x-triggers, and x-extraction-priority
+#   orders chunks inside a tier. The worker reads all three from this file at
+#   startup, so retuning the router means editing the contract, not the code.
 
 IncidentContract:
   type: object
@@ -35,102 +42,414 @@ IncidentContract:
     IncidentRecord columns server-side.
   properties:
     schema_version:
+      x-extraction: manual
       type: string
       description: Schema version identifier
       example: "1.1.0"
     schema_name:
+      x-extraction: manual
       type: string
       description: Schema name identifier
       enum:
         - fireform_incident_contract
 
     extraction_metadata:
+      x-extraction: manual
       $ref: "#/ExtractionMetadata"
     report_metadata:
+      x-extraction: manual
       $ref: "#/ReportMetadata"
     incident:
+      x-extraction: core
+      x-extraction-priority: 1
       $ref: "#/Incident"
     dispatch:
+      x-extraction: core
+      x-extraction-priority: 2
       $ref: "#/Dispatch"
     location:
+      x-extraction: core
+      x-extraction-priority: 3
       $ref: "#/Location"
     actions_taken:
+      x-extraction: core
+      x-extraction-priority: 5
       $ref: "#/ActionsTaken"
     responding_agencies:
+      x-extraction: core
+      x-extraction-priority: 6
       $ref: "#/RespondingAgencies"
     units:
+      x-extraction: core
+      x-extraction-priority: 4
       type: array
       description: Per-unit (apparatus/resource) response records with timestamps
       items:
         $ref: "#/UnitResponse"
     resources_summary:
+      x-extraction: background
       $ref: "#/ResourcesSummary"
     fire:
+      x-extraction: gated
+      x-triggers:
+        - fire
+        - fires
+        - flame
+        - flames
+        - smoke
+        - burn
+        - burning
+        - burned
+        - blaze
+        - arson
+        - ignition
+        - ignited
+        - ember
+        - embers
+        - smoldering
       $ref: "#/Fire"
     explosion:
+      x-extraction: gated
+      x-triggers:
+        - explosion
+        - explosive
+        - exploded
+        - blast
+        - detonation
+        - detonated
+        - bleve
+        - ruptured
+        - backdraft
       $ref: "#/Explosion"
     risk_reduction:
+      x-extraction: background
       $ref: "#/RiskReduction"
     structure:
+      x-extraction: gated
+      x-triggers:
+        - structure
+        - building
+        - house
+        - home
+        - apartment
+        - residence
+        - roof
+        - floor
+        - basement
+        - attic
+        - warehouse
+        - garage
+        - unit
+        - storey
+        - story
+        - wall
+        - ceiling
       $ref: "#/Structure"
     wildland:
+      x-extraction: gated
+      x-triggers:
+        - wildland
+        - wildfire
+        - brush
+        - grass
+        - grassland
+        - forest
+        - woods
+        - vegetation
+        - acre
+        - acres
+        - hectare
+        - hectares
+        - timber
+        - canopy
+        - crown
+        - fireline
+        - containment
       $ref: "#/Wildland"
     exposures:
+      x-extraction: gated
+      x-triggers:
+        - exposure
+        - exposures
+        - spread
+        - spreading
+        - adjacent
+        - neighboring
+        - neighbouring
+        - next door
+        - nearby structure
       type: array
       description: Properties beyond the origin affected by spread of the incident
       items:
         $ref: "#/Exposure"
     casualties:
+      x-extraction: gated
+      x-triggers:
+        - injured
+        - injury
+        - injuries
+        - victim
+        - victims
+        - fatality
+        - fatalities
+        - deceased
+        - died
+        - killed
+        - dead
+        - transported
+        - burns
+        - inhalation
+        - casualty
+        - casualties
+        - hurt
+        - unconscious
       $ref: "#/Casualties"
     rescues:
+      x-extraction: gated
+      x-triggers:
+        - rescue
+        - rescued
+        - trapped
+        - extricate
+        - extrication
+        - extricated
+        - pulled out
+        - carried out
+        - ladder rescue
+        - confined space
       type: array
       description: Rescues and assisted evacuations, with or without injury
       items:
         $ref: "#/Rescue"
     evacuation_displacement:
+      x-extraction: gated
+      x-triggers:
+        - evacuate
+        - evacuated
+        - evacuation
+        - displaced
+        - displacement
+        - shelter
+        - sheltered
+        - relocated
+        - red cross
+        - self-evacuated
       $ref: "#/EvacuationDisplacement"
     ems:
+      x-extraction: gated
+      x-triggers:
+        - ems
+        - ambulance
+        - medic
+        - medics
+        - paramedic
+        - patient
+        - patients
+        - cpr
+        - triage
+        - hospital
+        - vitals
+        - oxygen
+        - defibrillator
+        - als
+        - bls
+        - treated
       $ref: "#/EMS"
     hazmat:
+      x-extraction: gated
+      x-triggers:
+        - hazmat
+        - chemical
+        - chemicals
+        - spill
+        - spilled
+        - leak
+        - leaking
+        - fumes
+        - placard
+        - decon
+        - decontamination
+        - vapor
+        - vapour
+        - propane
+        - cylinder
+        - tanker
+        - corrosive
+        - toxic
       $ref: "#/Hazmat"
     emerging_hazards:
+      x-extraction: gated
+      x-triggers:
+        - battery
+        - batteries
+        - lithium
+        - ev
+        - electric vehicle
+        - solar
+        - solar panel
+        - energy storage
+        - charger
+        - charging
+        - thermal runaway
       type: array
       description: Battery, EV, solar and other stored-energy hazards (NERIS)
       items:
         $ref: "#/EmergingHazard"
     investigation:
+      x-extraction: gated
+      x-triggers:
+        - investigation
+        - investigator
+        - investigated
+        - cause
+        - origin
+        - arson
+        - fire marshal
+        - evidence
+        - police
+        - suspicious
+        - incendiary
       $ref: "#/Investigation"
     persons_involved:
+      x-extraction: gated
+      x-triggers:
+        - owner
+        - occupant
+        - occupants
+        - resident
+        - residents
+        - tenant
+        - witness
+        - witnesses
+        - driver
+        - landlord
+        - homeowner
       type: array
       description: Owners, occupants and other parties connected to the incident
       items:
         $ref: "#/PersonInvolved"
     mobile_property:
+      x-extraction: gated
+      x-triggers:
+        - vehicle
+        - vehicles
+        - car
+        - cars
+        - truck
+        - van
+        - suv
+        - motorcycle
+        - boat
+        - vessel
+        - trailer
+        - bus
+        - license plate
+        - tractor
       type: array
       description: Vehicles, vessels and other mobile property involved
       items:
         $ref: "#/MobileProperty"
     losses:
+      x-extraction: gated
+      x-triggers:
+        - loss
+        - losses
+        - damage
+        - damages
+        - destroyed
+        - cost
+        - estimated
+        - insured
+        - insurance
+        - value
+        - worth
+        - dollars
+        - total loss
       $ref: "#/Losses"
     weather:
+      x-extraction: gated
+      x-triggers:
+        - weather
+        - wind
+        - windy
+        - gust
+        - rain
+        - raining
+        - snow
+        - storm
+        - temperature
+        - humidity
+        - dry
+        - fog
+        - heat
+        - freezing
       $ref: "#/Weather"
     environmental_impact:
+      x-extraction: gated
+      x-triggers:
+        - runoff
+        - contamination
+        - contaminated
+        - waterway
+        - river
+        - creek
+        - stream
+        - soil
+        - pollution
+        - wildlife
+        - groundwater
+        - drain
       $ref: "#/EnvironmentalImpact"
     infrastructure_impact:
+      x-extraction: gated
+      x-triggers:
+        - power
+        - powerline
+        - electric
+        - utility
+        - utilities
+        - outage
+        - road closed
+        - road closure
+        - water main
+        - gas line
+        - bridge
+        - rail
+        - traffic
+        - telecom
       $ref: "#/InfrastructureImpact"
     near_miss_and_safety:
+      x-extraction: gated
+      x-triggers:
+        - near miss
+        - mayday
+        - close call
+        - ppe
+        - scba
+        - rit
+        - collapse
+        - safety officer
+        - firefighter injured
+        - accountability
       $ref: "#/NearMissAndSafety"
     situation_status:
+      x-extraction: core
+      x-extraction-priority: 7
       $ref: "#/SituationStatus"
     lessons_learned:
+      x-extraction: manual
       $ref: "#/LessonsLearned"
     follow_up:
+      x-extraction: manual
       $ref: "#/FollowUp"
     periodic_reporting:
+      x-extraction: background
       $ref: "#/PeriodicReporting"
     attachments:
+      x-extraction: manual
       $ref: "#/Attachments"
     custom_fields:
+      x-extraction: manual
       type: object
       description: |
         Agency-local fields with no contract home (NFIRS special studies,
