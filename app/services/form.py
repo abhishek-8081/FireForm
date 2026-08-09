@@ -59,7 +59,16 @@ class FormService:
         self, session: Session, template: Template, input_id: UUID, model: str | None = None
     ) -> FormSubmission:
         transcript = self.input_service.resolve_transcript(session, input_id)
+        return self.fill_and_persist(session, template, transcript, input_id, model)
 
+    def fill_and_persist(
+        self,
+        session: Session,
+        template: Template,
+        transcript: str,
+        input_id: UUID,
+        model: str | None = None,
+    ) -> FormSubmission:
         path = self.controller.fill_form(
             user_input=transcript,
             fields=template.fields,
