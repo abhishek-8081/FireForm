@@ -180,6 +180,22 @@ def strip_shared_enums(source: str, shared: set[str]) -> str:
     return "\n".join(kept) + "\n"
 
 
+# Types a contract field can share a name with. A field called `date` binds
+# `date = None` in its class body, which shadows the imported type and leaves
+# pydantic resolving the annotation to NoneType, so the field silently rejects
+# every value. Importing these under a distinct name removes the collision.
+SHADOWABLE_TYPES = {"date": "date_type", "time": "time_type"}
+
+
+def alias_shadowed_types(source: str) -> str:
+    """Import date and time under names no contract field can shadow."""
+    imported = ", ".join(f"{name} as {alias}" for name, alias in SHADOWABLE_TYPES.items())
+    out = source.replace("from datetime import date, time", f"from datetime import {imported}", 1)
+    for name, alias in SHADOWABLE_TYPES.items():
+        out = out.replace(f"Optional[{name}]", f"Optional[{alias}]")
+    return out
+
+
 def main() -> None:
     shared = shared_enum_names()
     with tempfile.TemporaryDirectory() as tmp:
@@ -191,7 +207,7 @@ def main() -> None:
             run_codegen(wrapped, raw)
         finally:
             wrapped.unlink(missing_ok=True)
-        body = strip_shared_enums(raw.read_text(), shared)
+        body = alias_shadowed_types(strip_shared_enums(raw.read_text(), shared))
 
     # Drop codegen's own header; it names the temporary wrapped file.
     body = "\n".join(

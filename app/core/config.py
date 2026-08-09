@@ -35,6 +35,18 @@ DB_ECHO = os.getenv("FIREFORM_DB_ECHO", "true").lower() == "true"
 # --- External services ----------------------------------------------------
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+# Seconds to wait on a single Ollama generate call. One chunk prompt on a small
+# local model is slow, so this is generous by design.
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "600"))
+# Ceiling on tokens generated per chunk answer. It stops a small model from
+# echoing the whole field skeleton back and spending the timeout on it.
+#
+# Keep these two in step. A section that runs past OLLAMA_TIMEOUT is lost
+# outright, while one that hits this ceiling still keeps every field it
+# completed before the cut, so the ceiling should be reachable well inside the
+# timeout on the slowest model you run. A small model on CPU manages roughly
+# three tokens a second, which is where these defaults come from.
+OLLAMA_MAX_TOKENS = int(os.getenv("OLLAMA_MAX_TOKENS", "1200"))
 WHISPER_HOST = os.getenv("WHISPER_HOST", "http://localhost:9000").rstrip("/")
 
 # --- Celery / Redis -------------------------------------------------------
@@ -64,6 +76,29 @@ EXTRACTION_POLL_INTERVAL_SECONDS = 5
 
 # Advisory estimate returned in the 202 body of POST /extract/{input_id}.
 ESTIMATED_EXTRACTION_SECONDS = int(os.getenv("ESTIMATED_EXTRACTION_SECONDS", "60"))
+
+# --- Extraction worker ----------------------------------------------------
+# How many chunk prompts run against Ollama at once. Ollama serves
+# OLLAMA_NUM_PARALLEL requests concurrently and queues the rest, so going wider
+# than the server buys nothing but memory pressure.
+EXTRACTION_MAX_PARALLEL = int(os.getenv("OLLAMA_NUM_PARALLEL", "4"))
+
+# Extra attempts after a chunk's first result fails validation. One retry, with
+# the rejected value named in the prompt; a chunk that misses twice is left for
+# manual entry rather than guessed at.
+EXTRACTION_CHUNK_RETRIES = int(os.getenv("EXTRACTION_CHUNK_RETRIES", "1"))
+
+# The contract file the chunk registry reads its tiers and triggers from.
+INCIDENT_CONTRACT_PATH = Path(
+    os.getenv("INCIDENT_CONTRACT_PATH", BASE_DIR / "contracts" / "schemas" / "incident-contract.yaml")
+)
+
+# Deployment context the extractor falls back on when the narrative is silent:
+# timezone for resolving relative dates, country, currency for Money amounts.
+# A request can override any of them through ExtractionRequest.defaults.
+DEFAULT_COUNTRY = os.getenv("FIREFORM_DEFAULT_COUNTRY", "US")
+DEFAULT_TIMEZONE = os.getenv("FIREFORM_DEFAULT_TIMEZONE", "UTC")
+DEFAULT_CURRENCY = os.getenv("FIREFORM_DEFAULT_CURRENCY", "USD")
 
 # --- API Versioning -------------------------------------------------------
 API_PREFIX = "/api/v1"

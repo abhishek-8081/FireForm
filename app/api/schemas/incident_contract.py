@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date as date_type, time as time_type
 from enum import Enum
 from typing import Annotated, Any, Optional
 from uuid import UUID
@@ -1285,7 +1285,7 @@ class ResponderCasualty(BaseModel):
     transported: Optional[bool] = None
     hospital: Optional[str] = None
     hospitalized_overnight: Optional[bool] = None
-    return_to_duty_date: Optional[date] = None
+    return_to_duty_date: Optional[date_type] = None
     osha_recordable: Optional[bool] = None
     exposure_only: Optional[bool] = None
     """
@@ -1447,7 +1447,7 @@ class EMSPatient(BaseModel):
     patient_ref_id: Optional[str] = None
     nemsis_report_id: Optional[str] = None
     age_approx: Optional[int] = None
-    date_of_birth: Optional[date] = None
+    date_of_birth: Optional[date_type] = None
     sex: Optional[str] = None
     chief_complaint: Optional[str] = None
     provider_impression: Optional[str] = None
@@ -1821,7 +1821,7 @@ class InfrastructureItem(BaseModel):
 
 class NearMissEvent(BaseModel):
     description: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[date_type] = None
     contributing_factors: Optional[list[str]] = None
     lessons_learned: Optional[str] = None
     corrective_action: Optional[str] = None
@@ -1934,8 +1934,8 @@ class SituationStatus(BaseModel):
     critical_resource_needs: Optional[list[str]] = None
     planned_actions: Optional[str] = None
     projected_final_size_ha: Optional[float] = None
-    anticipated_completion_date: Optional[date] = None
-    demobilization_start_date: Optional[date] = None
+    anticipated_completion_date: Optional[date_type] = None
+    demobilization_start_date: Optional[date_type] = None
     costs_to_date: Optional[Money] = None
     projected_final_cost: Optional[Money] = None
 
@@ -1948,7 +1948,7 @@ class LessonsLearned(BaseModel):
 
 class MopUp(BaseModel):
     percent_complete: Optional[int] = None
-    estimated_completion_date: Optional[date] = None
+    estimated_completion_date: Optional[date_type] = None
     personnel_assigned: Optional[int] = None
 
 
@@ -1961,7 +1961,7 @@ class Rehabilitation(BaseModel):
 class FollowUp(BaseModel):
     mop_up: Optional[MopUp] = None
     rehabilitation: Optional[Rehabilitation] = None
-    next_inspection_date: Optional[date] = None
+    next_inspection_date: Optional[date_type] = None
 
 
 class PeriodicReporting(BaseModel):
@@ -2011,9 +2011,7 @@ class SubmissionLogItem(BaseModel):
 
 class ReportMetadata(BaseModel):
     report_id: Annotated[Optional[str], Field(None, examples=["FF-2024-CA-0157"])]
-    incident_number: Annotated[
-        Optional[str], Field(None, examples=["CA-SQF-2024-0421"])
-    ]
+    incident_number: Annotated[Optional[str], Field(None, examples=["CA-SQF-2024-0421"])]
     """
     Department's own incident number
     """
@@ -2021,8 +2019,8 @@ class ReportMetadata(BaseModel):
     """
     Identifiers for this incident in external systems (CAD event, IRWIN, state registry, partner agency)
     """
-    report_date: Optional[date] = None
-    report_time: Optional[time] = None
+    report_date: Optional[date_type] = None
+    report_time: Optional[time_type] = None
     report_status: Optional[ReportStatus] = None
     reporting_unit: Optional[ReportingUnit] = None
     prepared_by: Optional[list[Personnel]] = None
@@ -2130,7 +2128,7 @@ class Fire(BaseModel):
 class CivilianCasualty(BaseModel):
     name: Optional[str] = None
     age: Optional[int] = None
-    date_of_birth: Optional[date] = None
+    date_of_birth: Optional[date_type] = None
     sex: Optional[str] = None
     race_ethnicity: Optional[str] = None
     """

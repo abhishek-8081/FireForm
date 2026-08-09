@@ -23,7 +23,7 @@ from app.db.repositories import (
     get_incident_by_extract,
     get_input,
 )
-from app.services.extraction import ExtractionService
+from app.services.extraction.service import ExtractionService
 from app.services.llm import check_ollama_available
 
 router = APIRouter(prefix="/extract", tags=["extraction"])
@@ -67,9 +67,14 @@ def create_extraction(
             error_code="LLM_UNAVAILABLE",
         )
 
-    model_override = body.model_override if body else None
     svc = ExtractionService()
-    extraction, job = svc.start_extraction(db, input_id, model_override=model_override)
+    extraction, job = svc.start_extraction(
+        db,
+        input_id,
+        model_override=body.model_override if body else None,
+        defaults=body.defaults if body else None,
+        hints=body.extraction_hints if body else None,
+    )
 
     return ExtractionJobResponse(
         extract_id=extraction.extract_id,
