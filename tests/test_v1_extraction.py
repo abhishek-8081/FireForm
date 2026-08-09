@@ -82,7 +82,7 @@ class TestCreateExtraction:
         mock_result = MagicMock()
         mock_result.id = celery_id
         with patch("app.api.routes.extraction.check_ollama_available", return_value=ollama_up), \
-             patch("app.services.extraction.extract_task") as mock_task:
+             patch("app.services.extraction.service.extract_task") as mock_task:
             mock_task.delay.return_value = mock_result
             resp = client.post(f"{POST_URL}/{input_id}", json=body)
             return resp, mock_task
