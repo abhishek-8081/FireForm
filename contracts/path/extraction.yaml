@@ -238,17 +238,27 @@ extract_by_id:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
       "409":
-        description: Extraction is locked (already submitted)
+        description: Conflict extraction locked or not yet completed
         content:
           application/json:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
-            example:
-              error_code: "EXTRACT_LOCKED"
-              message: "Cannot modify extraction incident report has been submitted"
-              detail:
-                report_status: "submitted"
-                submitted_at: "2024-07-15T18:00:00Z"
+            examples:
+              locked:
+                summary: Report already submitted
+                value:
+                  error_code: "EXTRACT_LOCKED"
+                  message: "Cannot modify extraction incident report has been submitted"
+                  detail:
+                    report_status: "submitted"
+                    submitted_at: "2024-07-15T18:00:00Z"
+              not_completed:
+                summary: Extraction still running, no document to correct yet
+                value:
+                  error_code: "EXTRACT_NOT_COMPLETED"
+                  message: "Extraction is in 'processing' state. Wait until status is 'completed'."
+                  detail:
+                    current_status: "processing"
       "422":
         description: Invalid field path or value
         content:

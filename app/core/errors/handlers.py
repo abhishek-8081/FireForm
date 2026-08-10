@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.config import RETRY_AFTER_SECONDS
-from app.core.errors.base import AppError
+from app.core.errors.base import AppError, ValidationAppError
 
 
 def _jsonable(value):
@@ -33,6 +33,18 @@ def register_exception_handlers(app):
             body["detail"] = exc.detail
         if exc.status_code == 503:
             body["retry_after_seconds"] = RETRY_AFTER_SECONDS
+        return JSONResponse(status_code=exc.status_code, content=body)
+
+    @app.exception_handler(ValidationAppError)
+    async def validation_app_error_handler(request: Request, exc: ValidationAppError):
+        body: dict = {"error_code": exc.error_code, "message": exc.message}
+        if exc.detail is not None:
+            body["detail"] = exc.detail
+        if exc.validation_errors:
+            body["validation_errors"] = [
+                {**error, "value": _jsonable(error.get("value"))}
+                for error in exc.validation_errors
+            ]
         return JSONResponse(status_code=exc.status_code, content=body)
 
     @app.exception_handler(RequestValidationError)
