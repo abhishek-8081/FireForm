@@ -2,23 +2,71 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
-from app.models import Template, FormSubmission, Job, Input, Extraction, Incident
+from app.models import (
+    Template,
+    FormSubmission,
+    FormTemplate,
+    Job,
+    Input,
+    Extraction,
+    Incident,
+    TemplateUpload,
+)
 from app.api.schemas.enums import ReportStatus
 
-# Templates
-def create_template(session: Session, template: Template) -> Template:
+# Templates (legacy fill pipeline - read-only lookup, consumed by forms/jobs/tasks)
+def get_template(session: Session, template_id: int) -> Template | None:
+    return session.get(Template, template_id)
+
+# Form templates (contract Layer 6 registry)
+def create_form_template(session: Session, template: FormTemplate) -> FormTemplate:
     session.add(template)
     session.commit()
     session.refresh(template)
     return template
 
-def get_template(session: Session, template_id: int) -> Template | None:
-    return session.get(Template, template_id)
+
+def get_form_template(session: Session, template_id: UUID) -> FormTemplate | None:
+    return session.get(FormTemplate, template_id)
 
 
-def list_templates(session: Session) -> list[Template]:
-    statement = select(Template).order_by(Template.created_at.desc(), Template.id.desc())
+def get_form_template_by_form_type(session: Session, form_type: str) -> FormTemplate | None:
+    statement = select(FormTemplate).where(FormTemplate.form_type == form_type)
+    return session.exec(statement).first()
+
+
+def list_form_templates(session: Session) -> list[FormTemplate]:
+    statement = select(FormTemplate).order_by(
+        FormTemplate.created_at.desc(), FormTemplate.template_id
+    )
     return list(session.exec(statement))
+
+
+def update_form_template(session: Session, template: FormTemplate) -> FormTemplate:
+    session.add(template)
+    session.commit()
+    session.refresh(template)
+    return template
+
+
+# Template PDF uploads (field-detection drafts)
+def create_template_upload(session: Session, upload: TemplateUpload) -> TemplateUpload:
+    session.add(upload)
+    session.commit()
+    session.refresh(upload)
+    return upload
+
+
+def get_template_upload(session: Session, upload_id: UUID) -> TemplateUpload | None:
+    return session.get(TemplateUpload, upload_id)
+
+
+def update_template_upload(session: Session, upload: TemplateUpload) -> TemplateUpload:
+    session.add(upload)
+    session.commit()
+    session.refresh(upload)
+    return upload
+
 
 # Forms
 def create_form(session: Session, form: FormSubmission) -> FormSubmission:
@@ -55,11 +103,6 @@ def update_job(session: Session, job: Job) -> Job:
     session.commit()
     session.refresh(job)
     return job
-
-
-def delete_template(session: Session, template: Template) -> None:
-    session.delete(template)
-    session.commit()
 
 
 def get_form_submission(session: Session, submission_id: int) -> FormSubmission | None:

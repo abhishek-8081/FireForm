@@ -7,6 +7,7 @@ from sqlmodel import SQLModel, Field
 from sqlmodel.sql.sqltypes import AutoString
 
 from app.api.schemas.enums import (
+    DetectionStatus,
     ExtractionStatus,
     FormStatus,
     FormType,
@@ -17,6 +18,7 @@ from app.api.schemas.enums import (
     OutputFormat,
     PeriodType,
     ReportStatus,
+    TemplateStatus,
 )
 
 
@@ -168,6 +170,66 @@ class Form(SQLModel, table=True):
     field_mapping_summary: dict | None = Field(default=None, sa_column=Column(JSON))
     pdf_path: str | None = None
     json_data: dict | None = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TemplateUpload(SQLModel, table=True):
+    """A blank PDF uploaded for template authoring, plus its detection draft.
+
+    The PDF is stored and its page geometry read synchronously, so a row exists
+    with `page_count`/`pages` filled before detection starts. `status` tracks
+    detection alone: a failed detection still leaves a usable upload, the user
+    just draws every box by hand. Rows are drafts, not templates. Registering a
+    template copies the edited fields into `form_templates` and keeps only the
+    `pdf_template_ref` pointing back here.
+    """
+
+    __tablename__ = "template_uploads"
+
+    upload_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    status: DetectionStatus = Field(
+        default=DetectionStatus.processing, sa_column=Column(AutoString, nullable=False)
+    )
+    # Path on disk, and the DATA_DIR-relative reference handed to clients.
+    pdf_path: str
+    pdf_template_ref: str
+    original_filename: str | None = None
+    page_count: int = Field(default=0)
+    # List of {page, width, height} in PDF points.
+    pages: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    # List of DraftField objects (see app/api/schemas/templates.py).
+    detected_fields: list | None = Field(default=None, sa_column=Column(JSON))
+    detection_error: str | None = None
+    job_id: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class FormTemplate(SQLModel, table=True):
+    """Contract Layer 6 form template registry (path/templates.yaml).
+
+    Distinct from the legacy prototype `Template` (int PK + uploaded PDF): this
+    is the standards registry keyed by `form_type`, holding incident-schema field
+    definitions plus their visual `layout`. `field_count` and `last_updated` are
+    derived in the response schemas (len(fields) / updated_at.date()), not stored.
+    """
+
+    __tablename__ = "form_templates"
+
+    template_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    form_type: str = Field(sa_column=Column(AutoString, nullable=False, unique=True, index=True))
+    display_name: str
+    jurisdiction: str | None = None
+    agency_type: str | None = None
+    # List of TemplateField objects (see app/api/schemas/templates.py).
+    fields: list = Field(sa_column=Column(JSON, nullable=False))
+    source_standard: str | None = None
+    pdf_template_ref: str | None = None
+    version: str = Field(default="1.0")
+    status: TemplateStatus = Field(
+        default=TemplateStatus.active, sa_column=Column(AutoString, nullable=False)
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
