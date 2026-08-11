@@ -7,7 +7,7 @@ import shutil
 import time
 
 import requests
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -16,7 +16,10 @@ from app.api.schemas.system import (
     HealthComponents,
     HealthStatus,
     ModelInfo,
+    SchemaFieldEntry,
+    SchemaFieldSearchResponse,
 )
+from app.services import field_catalog
 from app.core.config import APP_VERSION, DATA_DIR, OLLAMA_HOST, WHISPER_HOST
 from app.db.database import engine
 
@@ -178,4 +181,36 @@ def get_schema_versions():
             "error_code": "NOT_IMPLEMENTED",
             "message": "Schema version history not yet available — see issue #555",
         },
+    )
+
+
+@router.get(
+    "/schema/fields",
+    response_model=SchemaFieldSearchResponse,
+    summary="Search or list the incident-contract field catalog",
+)
+def search_schema_fields(
+    q: str | None = Query(None, description="Search text, matched against names, aliases and descriptions"),
+    section: str | None = Query(None, description="Restrict to one top-level contract section"),
+    limit: int = Query(20, ge=1, le=100, description="Caps search results, ignored when q is omitted"),
+):
+    hits = field_catalog.search(q, section, limit)
+    return SchemaFieldSearchResponse(
+        query=q,
+        total=len(hits),
+        schema_version=field_catalog.schema_version(),
+        fields=[
+            SchemaFieldEntry(
+                path=entry.path,
+                label=entry.label,
+                field_type=entry.field_type,
+                section=entry.section,
+                description=entry.description,
+                enum_values=list(entry.enum_values) if entry.enum_values else None,
+                pii=entry.pii,
+                aliases=list(entry.aliases),
+                score=score,
+            )
+            for entry, score in hits
+        ],
     )
