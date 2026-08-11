@@ -109,6 +109,26 @@ FIREFORM_API_KEY = os.getenv("FIREFORM_API_KEY", "")
 # --- Data Retention --------------------------------------------------------
 RETENTION_PERIOD_DAYS = int(os.getenv("RETENTION_PERIOD_DAYS", "30"))
 
+# --- Template PDF storage and field detection -----------------------------
+# Blank agency PDFs uploaded for template authoring land here as
+# {TEMPLATE_UPLOAD_DIR}/{upload_id}.pdf. The reference handed back to clients
+# is that path taken relative to DATA_DIR, so the two can never drift apart.
+TEMPLATE_UPLOAD_DIR = DATA_DIR / "templates" / "uploads"
+
+MAX_TEMPLATE_PDF_BYTES = 50 * 1024 * 1024
+
+# Polling hint returned by the draft endpoints while detection is running.
+TEMPLATE_DETECTION_POLL_INTERVAL_SECONDS = 5
+
+# Two thresholds govern the mapping suggester. Below the floor nothing is
+# offered at all: an empty list next to a good search box beats a wrong guess,
+# because a pre-filled mapping is trusted far more than it deserves. At or above
+# the auto-apply mark the top hit is written straight into the field as a
+# schema mapping; between the two the suggestions are listed and the user picks.
+MAPPING_SUGGESTION_FLOOR = float(os.getenv("MAPPING_SUGGESTION_FLOOR", "0.5"))
+MAPPING_AUTO_APPLY_SCORE = float(os.getenv("MAPPING_AUTO_APPLY_SCORE", "0.85"))
+MAX_MAPPING_SUGGESTIONS = 5
+
 # --- Audio storage --------------------------------------------------------
 # Voice input audio files land here: {AUDIO_DIR}/{input_id}.{ext}
 AUDIO_DIR = DATA_DIR / "audio"
