@@ -5,10 +5,11 @@ it: reading widget rectangles into layout boxes, naming fields, picking the
 label next to a box, scoring mapping suggestions, and writing the draft back.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from pypdf import PdfWriter
+from pypdf import PdfReader, PdfWriter
 from pypdf.generic import (
     ArrayObject,
     DictionaryObject,
@@ -221,8 +222,66 @@ def test_a_flat_pdf_goes_through_commonforms(flat_pdf, widget_pdf):
     instance.prepare_fillable.return_value = str(widget_pdf)
     with patch("app.services.controller.Controller", return_value=instance):
         drafts = detection.detect_fields(flat_pdf)
-    instance.prepare_fillable.assert_called_once_with(str(flat_pdf))
     assert len(drafts) == 2
+
+
+def test_a_one_page_pdf_is_padded_before_commonforms(flat_pdf, widget_pdf):
+    """commonforms cannot read a one-page document, so it never sees one."""
+    seen = {}
+
+    def capture(path):
+        seen["path"] = path
+        seen["pages"] = len(PdfReader(path).pages)
+        return str(widget_pdf)
+
+    instance = MagicMock()
+    instance.prepare_fillable.side_effect = capture
+    with patch("app.services.controller.Controller", return_value=instance):
+        detection.detect_fields(flat_pdf)
+
+    assert seen["path"] != str(flat_pdf)
+    assert seen["pages"] == 2
+    # The padded copy and the fillable it produced are scratch, not artefacts.
+    assert not Path(seen["path"]).exists()
+    assert not widget_pdf.exists()
+    assert flat_pdf.exists()
+
+
+def test_a_multi_page_pdf_is_passed_through_as_is(tmp_path, widget_pdf):
+    writer = PdfWriter()
+    writer.add_blank_page(612, 792)
+    writer.add_blank_page(612, 792)
+    flat = tmp_path / "two_pages.pdf"
+    with flat.open("wb") as handle:
+        writer.write(handle)
+
+    instance = MagicMock()
+    instance.prepare_fillable.return_value = str(widget_pdf)
+    with patch("app.services.controller.Controller", return_value=instance):
+        detection.detect_fields(flat)
+    instance.prepare_fillable.assert_called_once_with(str(flat))
+
+
+def test_boxes_found_on_the_padding_are_dropped(flat_pdf, tmp_path):
+    """A box detected on the blank page belongs to no page of the real PDF."""
+    writer = PdfWriter()
+    writer.add_blank_page(612, 792)
+    writer.add_blank_page(612, 792)
+    for page_ix, name in ((0, "real_box"), (1, "padding_box")):
+        page = writer.pages[page_ix]
+        annots = ArrayObject()
+        annots.append(writer._add_object(_widget(name, (100.0, 100.0, 200.0, 118.0))))
+        page[NameObject("/Annots")] = annots
+    fillable = tmp_path / "detected.pdf"
+    with fillable.open("wb") as handle:
+        writer.write(handle)
+
+    instance = MagicMock()
+    instance.prepare_fillable.return_value = str(fillable)
+    with patch("app.services.controller.Controller", return_value=instance):
+        drafts = detection.detect_fields(flat_pdf)
+
+    assert [d.field.layout.page for d in drafts] == [0]
 
 
 # ---------------------------------------------------------------------------

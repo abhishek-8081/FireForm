@@ -4,7 +4,6 @@ Uses an in-memory SQLite database and mocks the heavy dependencies
 (Controller → LLM / commonforms) so tests run fast without Docker or Ollama.
 """
 
-import io
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -88,12 +87,6 @@ _MINIMAL_PDF = (
 def pdf_bytes():
     """Raw bytes of a minimal valid PDF."""
     return _MINIMAL_PDF
-
-
-@pytest.fixture
-def pdf_upload(pdf_bytes):
-    """A tuple suitable for httpx/TestClient file upload."""
-    return ("file", ("test_form.pdf", io.BytesIO(pdf_bytes), "application/pdf"))
 
 
 # ---------------------------------------------------------------------------

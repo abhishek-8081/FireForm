@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
 from sqlmodel import Session
 
 from app.api.schemas.enums import DetectionStatus, FieldSource, TemplateFieldType
@@ -128,8 +128,11 @@ def _nearest_label(
     return None
 
 
-def _widgets(pdf_path: str | Path) -> list[tuple[int, TemplateFieldLayout, str | None, list]]:
-    """Every form widget in the PDF as (page index, layout, widget name, page texts)."""
+def _widgets(pdf_path: str | Path) -> list[tuple[TemplateFieldLayout, str | None, list]]:
+    """Every form widget in the PDF as (layout, widget name, page texts).
+
+    The page index lives on the layout, so it is not repeated in the tuple.
+    """
     reader = PdfReader(str(pdf_path))
     out = []
     for index, page in enumerate(reader.pages):
@@ -162,10 +165,10 @@ def _widgets(pdf_path: str | Path) -> list[tuple[int, TemplateFieldLayout, str |
                 height=height,
             )
             name = obj.get("/T")
-            out.append((index, layout, str(name) if name else None, texts))
+            out.append((layout, str(name) if name else None, texts))
 
     # Reading order: top of the page down, then left to right.
-    out.sort(key=lambda item: (item[0], -item[1].y, item[1].x))
+    out.sort(key=lambda item: (item[0].page, -item[0].y, item[0].x))
     return out
 
 
@@ -234,7 +237,7 @@ def _drafts_from_widgets(widgets: list) -> list[DraftField]:
     used: set[str] = set()
     drafts: list[DraftField] = []
 
-    for position, (_page, layout, widget_name, texts) in enumerate(widgets, start=1):
+    for position, (layout, widget_name, texts) in enumerate(widgets, start=1):
         label = _nearest_label(layout, texts)
         # A widget's own name is often the best clue a fillable PDF gives
         # ("incident_number"), so it stands in when no text sits near the box.
@@ -264,6 +267,27 @@ def build_draft_fields(pdf_path: str | Path) -> list[DraftField]:
     return _drafts_from_widgets(_widgets(pdf_path))
 
 
+def _pad_with_blank_page(pdf_path: Path) -> Path:
+    """Write a copy of a one-page PDF with a blank second page appended.
+
+    commonforms cannot read a single-page document. It wraps the detector's
+    output a second time when the page count is 1 (inference.py), and the
+    rfdetr versions it now installs with already hand back a list, so the run
+    dies with "'list' object has no attribute 'with_nms'". One blank page keeps
+    us off that branch. Detections on the padding are dropped afterwards.
+    """
+    reader = PdfReader(str(pdf_path))
+    page = reader.pages[0]
+    writer = PdfWriter()
+    writer.add_page(page)
+    writer.add_blank_page(width=page.mediabox.width, height=page.mediabox.height)
+
+    padded = pdf_path.with_name(f"{pdf_path.stem}_padded.pdf")
+    with padded.open("wb") as handle:
+        writer.write(handle)
+    return padded
+
+
 def detect_fields(pdf_path: str | Path) -> list[DraftField]:
     """Run commonforms over a PDF, then draft a field per detected box.
 
@@ -274,13 +298,34 @@ def detect_fields(pdf_path: str | Path) -> list[DraftField]:
     # detection stack, which is far too heavy for an API process to import.
     from app.services.controller import Controller
 
+    pdf_path = Path(pdf_path)
     widgets = _widgets(pdf_path)
     if widgets:
         logger.info("%s already has form widgets, skipping detection", pdf_path)
         return _drafts_from_widgets(widgets)
 
-    fillable_path = Controller().prepare_fillable(str(pdf_path))
-    return build_draft_fields(fillable_path)
+    padded = None
+    if len(PdfReader(str(pdf_path)).pages) == 1:
+        padded = _pad_with_blank_page(pdf_path)
+        logger.info("%s is one page, padding it for commonforms", pdf_path)
+
+    fillable_path = None
+    try:
+        fillable_path = Path(Controller().prepare_fillable(str(padded or pdf_path)))
+        drafts = build_draft_fields(fillable_path)
+    finally:
+        # Both files are scratch. The boxes live in the draft from here on, and
+        # the upload the user later registers points at the original PDF.
+        if padded:
+            padded.unlink(missing_ok=True)
+        if fillable_path:
+            fillable_path.unlink(missing_ok=True)
+
+    if padded:
+        # Nothing should land on the blank page, but a stray box there would
+        # otherwise become a field on a page the real PDF does not have.
+        drafts = [d for d in drafts if d.field.layout and d.field.layout.page == 0]
+    return drafts
 
 
 # ---------------------------------------------------------------------------

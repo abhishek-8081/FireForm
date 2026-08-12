@@ -134,6 +134,17 @@ def replace_template(
 ) -> TemplateDetail:
     template = _require_template(db, template_id)
 
+    # form_type is unique in the DB, so a rename onto a form_type another
+    # template already holds has to be answered here. Without this the insert
+    # fails deep in the session and the client gets a bare 500.
+    clash = get_form_template_by_form_type(db, body.form_type)
+    if clash and clash.template_id != template_id:
+        raise AppError(
+            f"Template with form_type '{body.form_type}' already exists",
+            status_code=409,
+            error_code="TEMPLATE_EXISTS",
+        )
+
     # Contract defines a 409 TEMPLATE_IN_USE when submitted incidents reference
     # this template. The contract forms/incidents layers tie records to
     # extract_id + form_type, never template_id, so there is no linkage to query

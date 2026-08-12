@@ -35,6 +35,22 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 _PDF_MAGIC = b"%PDF-"
 
 
+def _reject_if_too_large(size: int | None) -> None:
+    """Guard the 50MB cap. Checked once on the declared size before the body is
+    read into memory, and again on what actually arrived."""
+    if size is None or size <= MAX_TEMPLATE_PDF_BYTES:
+        return
+    raise AppError(
+        "PDF exceeds maximum size of 50MB",
+        status_code=413,
+        error_code="FILE_TOO_LARGE",
+        detail={
+            "max_size_bytes": MAX_TEMPLATE_PDF_BYTES,
+            "received_size_bytes": size,
+        },
+    )
+
+
 @router.get("", response_model=list[TemplateSummary])
 def list_templates(db: Session = Depends(get_db)):
     return service.list_templates(db)
@@ -56,16 +72,7 @@ def upload_template_pdf(
 ):
     filename = pdf_file.filename or ""
 
-    if pdf_file.size is not None and pdf_file.size > MAX_TEMPLATE_PDF_BYTES:
-        raise AppError(
-            "PDF exceeds maximum size of 50MB",
-            status_code=413,
-            error_code="FILE_TOO_LARGE",
-            detail={
-                "max_size_bytes": MAX_TEMPLATE_PDF_BYTES,
-                "received_size_bytes": pdf_file.size,
-            },
-        )
+    _reject_if_too_large(pdf_file.size)
 
     content = pdf_file.file.read()
     if not content:
@@ -74,16 +81,7 @@ def upload_template_pdf(
             status_code=400,
             error_code="MISSING_FILE",
         )
-    if len(content) > MAX_TEMPLATE_PDF_BYTES:
-        raise AppError(
-            "PDF exceeds maximum size of 50MB",
-            status_code=413,
-            error_code="FILE_TOO_LARGE",
-            detail={
-                "max_size_bytes": MAX_TEMPLATE_PDF_BYTES,
-                "received_size_bytes": len(content),
-            },
-        )
+    _reject_if_too_large(len(content))
     # Trust the bytes, not the extension or the declared content type.
     if not content.startswith(_PDF_MAGIC):
         raise AppError(

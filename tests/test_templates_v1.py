@@ -128,6 +128,23 @@ def test_replace_updates_fields(client):
     assert body["template_id"] == template_id
 
 
+def test_replace_onto_a_taken_form_type_returns_409(client):
+    first = _create(client, form_type="tx_sfm_incident").json()["template_id"]
+    _create(client, form_type="tx_sfm_casualty")
+
+    resp = client.put(
+        f"{TEMPLATES_URL}/{first}", json=_payload(form_type="tx_sfm_casualty")
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error_code"] == "TEMPLATE_EXISTS"
+
+
+def test_replace_keeping_its_own_form_type_is_not_a_conflict(client):
+    template_id = _create(client).json()["template_id"]
+    resp = client.put(f"{TEMPLATES_URL}/{template_id}", json=_payload())
+    assert resp.status_code == 200
+
+
 def test_replace_missing_returns_404(client):
     resp = client.put(
         f"{TEMPLATES_URL}/550e8400-e29b-41d4-a716-446655440099", json=_payload()
