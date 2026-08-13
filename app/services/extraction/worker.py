@@ -7,8 +7,9 @@ document, then write the incident and close out the extraction and its job.
 
 A chunk that fails does not sink the run. The narrative is the only thing every
 chunk shares, so a chunk missing means those fields stay empty and the review
-screen shows the gap. The run only fails when Ollama is unreachable or when
-nothing at all could be extracted.
+screen shows the gap. The run only fails when the provider itself is the
+problem, unreachable or out of quota, or when nothing at all could be extracted.
+A run stopped by a rate limit keeps everything the earlier waves published.
 """
 
 from __future__ import annotations
@@ -23,7 +24,6 @@ from sqlmodel import Session
 
 from app.api.schemas.enums import ExtractionStatus
 from app.api.schemas.incident_contract import IncidentContract
-from app.core.config import OLLAMA_MODEL
 from app.core.logging import get_logger
 from app.db.repositories import (
     create_draft_incident,
@@ -34,7 +34,7 @@ from app.db.repositories import (
     update_incident,
     update_job,
 )
-from app.services.extraction.client import LLMUnavailableError
+from app.services import llm
 from app.services.extraction.defaults import apply_context, context_lines, resolve_context
 from app.services.extraction.router import select_chunks
 from app.services.extraction.runner import ChunkResult, run_chunks
@@ -150,7 +150,7 @@ def run_extraction(
         _fail(session, extraction, job, "EMPTY_INPUT", "The input has no transcript to extract from.")
         return {"extract_id": str(extract_id), "status": "failed"}
 
-    model_used = extraction.model_used or OLLAMA_MODEL
+    model_used = extraction.model_used or llm.get_settings().model
     context = resolve_context(defaults)
     prompt_context = context_lines(context, hints)
     specs = select_chunks(text)
@@ -170,7 +170,16 @@ def run_extraction(
 
     try:
         results = run_chunks(specs, text, prompt_context, extraction.model_used, on_wave=publish)
-    except LLMUnavailableError as exc:
+    except llm.LLMRateLimitError as exc:
+        # Whatever the waves already published stays on the record, so a run cut
+        # short by a quota is still worth reviewing rather than starting over.
+        _fail(session, extraction, job, "LLM_RATE_LIMITED", str(exc))
+        return {
+            "extract_id": str(extract_id),
+            "status": "failed",
+            "retry_after_seconds": exc.retry_after_seconds,
+        }
+    except (llm.LLMUnavailableError, llm.LLMAuthError) as exc:
         _fail(session, extraction, job, "LLM_UNAVAILABLE", str(exc))
         raise
 
