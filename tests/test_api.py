@@ -158,7 +158,7 @@ class TestFormEndpoints:
             captured["files"] = files
             return fake_response
 
-        monkeypatch.setattr("app.api.routes.forms.requests.post", fake_post)
+        monkeypatch.setattr("app.services.whisper.requests.post", fake_post)
 
         audio = ("audio", ("recording.wav", io.BytesIO(b"RIFFfake"), "audio/wav"))
         resp = client.post(f"{API_PREFIX}/forms/transcribe", files=[audio])
@@ -170,31 +170,32 @@ class TestFormEndpoints:
         assert captured["params"]["output"] == "json"
 
     def test_list_models(self, client, monkeypatch):
-        ""f"{API_PREFIX}/forms/models lists Ollama models and always includes the default."""
-        from unittest.mock import MagicMock
+        ""f"{API_PREFIX}/forms/models lists what the provider serves, default marked."""
+        from app.services.llm.models import ModelInfo
 
-        fake_response = MagicMock()
-        fake_response.json.return_value = {"models": [{"name": "qwen2.5:3b"}, {"name": "mistral:latest"}]}
-        fake_response.raise_for_status.return_value = None
-        monkeypatch.setattr("app.api.routes.forms.requests.get", lambda *a, **k: fake_response)
-        monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+        monkeypatch.setattr(
+            "app.api.routes.forms.llm.list_models",
+            lambda: [
+                ModelInfo(name="qwen2.5:1.5b", default=True),
+                ModelInfo(name="qwen2.5:3b"),
+                ModelInfo(name="mistral:latest"),
+            ],
+        )
 
         resp = client.get(f"{API_PREFIX}/forms/models")
         assert resp.status_code == 200
         body = resp.json()
         assert body["default"] == "qwen2.5:1.5b"
-        assert "qwen2.5:1.5b" in body["models"]  # default injected even if not pulled
-        assert "qwen2.5:3b" in body["models"]
+        assert body["models"] == ["qwen2.5:1.5b", "qwen2.5:3b", "mistral:latest"]
 
-    def test_list_models_ollama_down(self, client, monkeypatch):
-        """If Ollama is unreachable, still return the default alone."""
-        import requests
+    def test_list_models_provider_down(self, client, monkeypatch):
+        """A provider that will not list them still yields the configured model."""
+        from app.services.llm.models import ModelInfo
 
-        def boom(*a, **k):
-            raise requests.exceptions.ConnectionError("down")
-
-        monkeypatch.setattr("app.api.routes.forms.requests.get", boom)
-        monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+        monkeypatch.setattr(
+            "app.api.routes.forms.llm.list_models",
+            lambda: [ModelInfo(name="qwen2.5:1.5b", default=True)],
+        )
 
         resp = client.get(f"{API_PREFIX}/forms/models")
         assert resp.status_code == 200
@@ -220,7 +221,7 @@ class TestFormEndpoints:
         def fake_post(*args, **kwargs):
             raise requests.exceptions.ConnectionError("no service")
 
-        monkeypatch.setattr("app.api.routes.forms.requests.post", fake_post)
+        monkeypatch.setattr("app.services.whisper.requests.post", fake_post)
 
         audio = ("audio", ("recording.wav", io.BytesIO(b"data"), "audio/wav"))
         resp = client.post(f"{API_PREFIX}/forms/transcribe", files=[audio])
