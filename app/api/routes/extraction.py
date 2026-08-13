@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from sqlmodel import Session
 
 from app.api.deps import get_db
@@ -23,10 +23,43 @@ from app.db.repositories import (
     get_incident_by_extract,
     get_input,
 )
+from app.models import Extraction, Incident
 from app.services.extraction.service import ExtractionService
+from app.services.extraction_review import ExtractionReviewService, load_for_review
 from app.services.llm import check_ollama_available
 
 router = APIRouter(prefix="/extract", tags=["extraction"])
+
+MERGE_PATCH_MEDIA_TYPE = "application/merge-patch+json"
+
+
+def _completed_response(extraction: Extraction, incident: Incident | None) -> ExtractionCompleted:
+    """The completed shape, with the contract read from the incident row."""
+    contract = IncidentContract.model_validate(
+        (incident.incident_contract if incident else None) or {}
+    )
+    return ExtractionCompleted(
+        extract_id=extraction.extract_id,
+        input_id=extraction.input_id,
+        incident_id=incident.incident_id if incident else None,
+        status="completed",
+        incident_contract=contract,
+        completed_at=extraction.completed_at,
+        model_used=extraction.model_used,
+        processing_time_seconds=extraction.processing_time_seconds,
+        corrections=extraction.corrections,
+    )
+
+
+def _load_extraction(db: Session, extract_id: UUID) -> Extraction:
+    extraction = get_extraction(db, extract_id)
+    if extraction is None:
+        raise AppError(
+            f"Extraction with ID {extract_id} not found",
+            status_code=404,
+            error_code="EXTRACT_NOT_FOUND",
+        )
+    return extraction
 
 
 @router.post("/{input_id}", response_model=ExtractionJobResponse, status_code=202)
@@ -89,30 +122,10 @@ def create_extraction(
 
 @router.get("/{extract_id}", response_model=ExtractionCompleted | ExtractionProcessing)
 def get_extraction_result(extract_id: UUID, db: Session = Depends(get_db)):
-    extraction = get_extraction(db, extract_id)
-    if extraction is None:
-        raise AppError(
-            f"Extraction with ID {extract_id} not found",
-            status_code=404,
-            error_code="EXTRACT_NOT_FOUND",
-        )
+    extraction = _load_extraction(db, extract_id)
 
     if extraction.status == ExtractionStatus.completed:
-        incident = get_incident_by_extract(db, extract_id)
-        contract = IncidentContract.model_validate(
-            (incident.incident_contract if incident else None) or {}
-        )
-        return ExtractionCompleted(
-            extract_id=extraction.extract_id,
-            input_id=extraction.input_id,
-            incident_id=incident.incident_id if incident else None,
-            status="completed",
-            incident_contract=contract,
-            completed_at=extraction.completed_at,
-            model_used=extraction.model_used,
-            processing_time_seconds=extraction.processing_time_seconds,
-            corrections=extraction.corrections,
-        )
+        return _completed_response(extraction, get_incident_by_extract(db, extract_id))
 
     retry_after = (
         EXTRACTION_POLL_INTERVAL_SECONDS
@@ -134,3 +147,23 @@ def get_extraction_result(extract_id: UUID, db: Session = Depends(get_db)):
         error_detail=extraction.error_detail,
         partial_result=partial,
     )
+
+
+@router.patch("/{extract_id}", response_model=ExtractionCompleted)
+def update_extraction(
+    extract_id: UUID,
+    patch: dict = Body(
+        ...,
+        media_type=MERGE_PATCH_MEDIA_TYPE,
+        description="JSON Merge Patch (RFC 7396) shaped like the incident contract. "
+        "Only send the fields that changed; a null deletes a field.",
+    ),
+    db: Session = Depends(get_db),
+):
+    extraction = _load_extraction(db, extract_id)
+    incident = load_for_review(extraction, get_incident_by_extract(db, extract_id))
+
+    extraction, incident = ExtractionReviewService().apply_patch(
+        db, extraction, incident, patch
+    )
+    return _completed_response(extraction, incident)
