@@ -16,7 +16,13 @@ celery_app.conf.update(
     result_expires=86400,
 )
 
-celery_app.conf.include = ["app.tasks.fill", "app.tasks.purge", "app.tasks.transcribe", "app.tasks.extract"]
+celery_app.conf.include = [
+    "app.tasks.fill",
+    "app.tasks.purge",
+    "app.tasks.transcribe",
+    "app.tasks.extract",
+    "app.tasks.detect_fields",
+]
 
 # Optional Celery Beat schedule — runs purge_old_submissions once a day.
 # Enable by running: celery -A app.core.celery beat

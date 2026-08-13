@@ -4,7 +4,6 @@ Uses an in-memory SQLite database and mocks the heavy dependencies
 (Controller → LLM / commonforms) so tests run fast without Docker or Ollama.
 """
 
-import io
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -14,7 +13,18 @@ from sqlmodel import SQLModel, Session, create_engine
 
 from app.main import app
 from app.api.deps import get_db
-from app.models import Template, FormSubmission, Job, Input, Extraction, Incident, Form, Report  # noqa: F401 — registers tables
+from app.models import (  # noqa: F401 — importing these registers their tables
+    Extraction,
+    Form,
+    FormSubmission,
+    FormTemplate,
+    Incident,
+    Input,
+    Job,
+    Report,
+    Template,
+    TemplateUpload,
+)
 
 # ---------------------------------------------------------------------------
 # In-memory database
@@ -79,29 +89,30 @@ def pdf_bytes():
     return _MINIMAL_PDF
 
 
-@pytest.fixture
-def pdf_upload(pdf_bytes):
-    """A tuple suitable for httpx/TestClient file upload."""
-    return ("file", ("test_form.pdf", io.BytesIO(pdf_bytes), "application/pdf"))
-
-
 # ---------------------------------------------------------------------------
 # Controller mock — patches the heavy dependencies at the route level
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def mock_controller():
-    """Patch Controller so create_template / fill_form don't touch the FS or LLM."""
-    with patch("app.api.routes.templates.Controller") as tpl_cls, \
-         patch("app.api.routes.forms.Controller") as form_cls:
-        tpl_instance = MagicMock()
-        tpl_instance.create_template.return_value = "src/inputs/test_template.pdf"
-        tpl_cls.return_value = tpl_instance
-
+    """Patch the forms Controller so fill_form doesn't touch the FS or LLM."""
+    with patch("app.api.routes.forms.Controller") as form_cls:
         form_instance = MagicMock()
         form_instance.fill_form.return_value = "src/outputs/filled_output.pdf"
         form_cls.return_value = form_instance
 
-        yield {
-            "template_ctrl": tpl_instance,
-            "form_ctrl": form_instance,
-        }
+        yield {"form_ctrl": form_instance}
+
+
+@pytest.fixture
+def seed_template():
+    """Insert a legacy Template row directly (the /templates/create endpoint was
+    removed in the contract migration). Returns a factory -> template id."""
+    def _make(name: str = "T", pdf_path: str = "src/inputs/t.pdf", fields: dict | None = None) -> int:
+        with Session(_engine) as session:
+            tpl = Template(name=name, pdf_path=pdf_path, fields=fields if fields is not None else {"name": "string"})
+            session.add(tpl)
+            session.commit()
+            session.refresh(tpl)
+            return tpl.id
+
+    return _make
