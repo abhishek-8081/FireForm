@@ -1,32 +1,21 @@
 from pydantic import BaseModel
 
 
-class ModelInfo(BaseModel):
-    name: str
-    size_gb: float
-    quantization: str | None = None
-    loaded: bool
-
-
-class CurrentLoad(BaseModel):
-    active_requests: int
-    queued_requests: int
-
-
 class ComponentHealth(BaseModel):
     status: str
     response_time_ms: int | None = None
     detail: str | None = None
-    model_loaded: str | None = None
-    ollama_version: str | None = None
-    models_available: list[ModelInfo] | None = None
-    current_load: CurrentLoad | None = None
     disk_free_gb: float | None = None
+    provider: str | None = None
+    model: str | None = None
+    external: bool | None = None
+    probed: bool | None = None
+    models_available: list[str] | None = None
 
 
 class HealthComponents(BaseModel):
     database: ComponentHealth
-    ollama: ComponentHealth
+    llm: ComponentHealth
     whisper: ComponentHealth
     storage: ComponentHealth
 
