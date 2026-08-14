@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import requests
 from fastapi import APIRouter, Depends, File, UploadFile, Query
 from sqlmodel import Session, select
 
@@ -11,11 +10,12 @@ from app.api.schemas.forms import (
     ModelsResponse,
     TranscriptionResponse,
 )
-from app.core.config import OLLAMA_HOST, OLLAMA_MODEL, BASE_DIR, RETENTION_PERIOD_DAYS
+from app.core.config import BASE_DIR, RETENTION_PERIOD_DAYS
 from app.services.whisper import call_whisper_asr
 from app.core.errors.base import AppError
 from app.db.repositories import create_form, get_template, get_form_submission, delete_form_submission
 from app.models import FormSubmission, Template
+from app.services import llm
 from app.services.controller import Controller
 
 PROJECT_ROOT = BASE_DIR
@@ -66,24 +66,14 @@ def fill_form(form: FormFill, db: Session = Depends(get_db)):
 
 @router.get("/models", response_model=ModelsResponse)
 def list_models():
-    """List the Whisper-independent extraction models available in the local
-    Ollama instance, plus the configured default. Used by the Fill Form UI's
-    model picker. Falls back to just the default if Ollama is unreachable."""
-    default_model = OLLAMA_MODEL
+    """Models the configured provider will serve, for the Fill Form model picker.
 
-    models: list[str] = []
-    try:
-        response = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=10)
-        response.raise_for_status()
-        models = [m["name"] for m in response.json().get("models", []) if m.get("name")]
-    except requests.exceptions.RequestException:
-        models = []
-
-    # Always surface the configured default, even if Ollama hasn't pulled it yet.
-    if default_model not in models:
-        models.insert(0, default_model)
-
-    return ModelsResponse(models=models, default=default_model)
+    Falls back to the configured default alone when the provider will not list
+    them.
+    """
+    available = llm.list_models()
+    default = next((m.name for m in available if m.default), llm.get_settings().model)
+    return ModelsResponse(models=[m.name for m in available], default=default)
 
 
 @router.post("/transcribe", response_model=TranscriptionResponse)

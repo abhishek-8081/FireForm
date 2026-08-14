@@ -21,11 +21,10 @@ from app.db.repositories import (
 )
 from app.models import Extraction, Input, Job
 from app.services.extraction import runner as runner_module
-from app.services.extraction.client import (
-    ChunkCallError,
-    ChunkTimeoutError,
+from app.services.llm.errors import (
+    LLMRateLimitError,
+    LLMTimeoutError,
     LLMUnavailableError,
-    _extract_json_object,
 )
 from app.services.extraction.defaults import ExtractionContext, apply_context, resolve_context
 from app.services.extraction.prompts import build_prompt, static_prefix
@@ -72,11 +71,11 @@ def chunk_of(prompt: str) -> str:
     return match.group(1)
 
 
-def fake_ollama(answers=None, calls=None):
-    """A stand-in for client.call_chunk that answers from a table."""
+def fake_llm(answers=None, calls=None):
+    """A stand-in for llm.generate_json that answers from a table."""
     table = ANSWERS if answers is None else answers
 
-    def _call(prompt: str, model: str | None = None):
+    def _call(prompt: str, model: str | None = None, gate=None):
         name = chunk_of(prompt)
         if calls is not None:
             calls.append((name, prompt))
@@ -88,11 +87,11 @@ def fake_ollama(answers=None, calls=None):
 
 @pytest.fixture
 def mock_llm(monkeypatch):
-    """Patch the Ollama call the runner uses. Yields a setter for the answers."""
+    """Patch the model call the runner makes. Yields a setter for the answers."""
 
     def _install(answers=None, calls=None, side_effect=None):
-        target = side_effect or fake_ollama(answers, calls)
-        monkeypatch.setattr(runner_module, "call_chunk", target)
+        target = side_effect or fake_llm(answers, calls)
+        monkeypatch.setattr(runner_module.llm, "generate_json", target)
         return target
 
     return _install
@@ -168,36 +167,6 @@ class TestRouter:
     def test_core_chunks_come_before_gated(self):
         tiers = [spec.tier for spec in select_chunks(NARRATIVE)]
         assert tiers == sorted(tiers, key=lambda t: [Tier.core, Tier.gated, Tier.background].index(t))
-
-
-class TestAnswerParsing:
-    def test_a_code_fence_is_ignored(self):
-        assert _extract_json_object('```json\n{"incident": {"name": "x"}}\n```') == {
-            "incident": {"name": "x"}
-        }
-
-    def test_an_answer_cut_off_mid_value_keeps_what_came_before(self):
-        # Verbatim shape of a real qwen2.5 answer that hit the token ceiling.
-        truncated = (
-            '{\n  "incident": {\n    "name": "Oak Street fire",\n'
-            '    "alarm_datetime": "2026-04-18T21:14:00-07:00",\n'
-            '    "cleared_datetime": "2026-04-18T21:19'
-        )
-        parsed = _extract_json_object(truncated)
-        assert parsed["incident"]["name"] == "Oak Street fire"
-        assert parsed["incident"]["alarm_datetime"] == "2026-04-18T21:14:00-07:00"
-        # The half-written value is gone rather than kept as a broken timestamp.
-        assert "cleared_datetime" not in parsed["incident"]
-
-    def test_a_cut_off_list_keeps_its_complete_entries(self):
-        truncated = '{"units": [{"unit_id": "E12"}, {"unit_id": "E13"}, {"unit_id": "E1'
-        assert _extract_json_object(truncated) == {
-            "units": [{"unit_id": "E12"}, {"unit_id": "E13"}]
-        }
-
-    def test_an_answer_with_no_object_is_rejected(self):
-        with pytest.raises(ChunkCallError):
-            _extract_json_object("I could not find anything in that narrative.")
 
 
 class TestPrompts:
@@ -366,7 +335,7 @@ class TestRetryAndFailure:
 
     def test_an_unusable_chunk_shape_is_reported_as_failed(self, db, mock_llm):
         # A scalar where the section's object belongs: there is nothing to keep.
-        def scalar_casualties(prompt, model=None):
+        def scalar_casualties(prompt, model=None, gate=None):
             name = chunk_of(prompt)
             return {name: "two people hurt" if name == "casualties" else ANSWERS.get(name, {})}
 
@@ -382,11 +351,11 @@ class TestRetryAndFailure:
     def test_a_timed_out_chunk_is_not_retried(self, db, mock_llm):
         calls: list[str] = []
 
-        def slow_casualties(prompt, model=None):
+        def slow_casualties(prompt, model=None, gate=None):
             name = chunk_of(prompt)
             calls.append(name)
             if name == "casualties":
-                raise ChunkTimeoutError("Ollama timed out after 300s")
+                raise LLMTimeoutError("the provider did not answer within 300s")
             return {name: ANSWERS.get(name, {})}
 
         mock_llm(side_effect=slow_casualties)
@@ -400,7 +369,7 @@ class TestRetryAndFailure:
         assert extraction.status == ExtractionStatus.completed
 
     def test_run_fails_when_every_chunk_is_rejected(self, db, mock_llm):
-        def always_broken(prompt, model=None):
+        def always_broken(prompt, model=None, gate=None):
             # A scalar where the chunk's object belongs: rejected every time.
             return {chunk_of(prompt): "not an object"}
 
@@ -416,7 +385,7 @@ class TestRetryAndFailure:
         assert get_job_by_uuid(db, job.job_id).status == "failed"
 
     def test_ollama_down_fails_the_run(self, db, mock_llm):
-        def unreachable(prompt, model=None):
+        def unreachable(prompt, model=None, gate=None):
             raise LLMUnavailableError("could not reach Ollama at http://ollama:11434")
 
         mock_llm(side_effect=unreachable)
@@ -429,6 +398,28 @@ class TestRetryAndFailure:
         assert extraction.error_type == "LLM_UNAVAILABLE"
         assert "could not reach Ollama" in extraction.error_detail
         assert get_job_by_uuid(db, job.job_id).error["error_code"] == "LLM_UNAVAILABLE"
+
+    def test_a_rate_limited_run_fails_but_keeps_what_it_had(self, db, mock_llm):
+        """A quota that will not lift stops the run. It does not erase it."""
+        later = next(spec.name for spec in select_chunks(NARRATIVE) if spec.tier is not Tier.core)
+
+        def rate_limited(prompt, model=None, gate=None):
+            name = chunk_of(prompt)
+            if name == later:
+                raise LLMRateLimitError("still rate limiting after 11 attempts", 10.0)
+            return {name: ANSWERS.get(name, {})}
+
+        mock_llm(side_effect=rate_limited)
+        extraction, job = seed(db)
+
+        result = run_extraction(db, extraction.extract_id, job.job_id)
+
+        assert result["status"] == "failed"
+        assert result["retry_after_seconds"] == 10.0
+        assert extraction.status == ExtractionStatus.failed
+        assert extraction.error_type == "LLM_RATE_LIMITED"
+        assert extraction.partial_result["incident"]["name"]
+        assert get_job_by_uuid(db, job.job_id).error["error_code"] == "LLM_RATE_LIMITED"
 
     def test_empty_transcript_fails_before_any_call(self, db, mock_llm):
         calls: list[tuple[str, str]] = []

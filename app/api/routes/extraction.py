@@ -26,7 +26,7 @@ from app.db.repositories import (
 from app.models import Extraction, Incident
 from app.services.extraction.service import ExtractionService
 from app.services.extraction_review import ExtractionReviewService, load_for_review
-from app.services.llm import check_ollama_available
+from app.services import llm
 
 router = APIRouter(prefix="/extract", tags=["extraction"])
 
@@ -93,11 +93,13 @@ def create_extraction(
             detail={"existing_extract_id": str(existing.extract_id)},
         )
 
-    if not check_ollama_available():
+    provider = llm.health()
+    if provider.status == "unhealthy":
         raise AppError(
-            "Ollama LLM service is not available",
+            f"The {provider.label} LLM service is not available",
             status_code=503,
             error_code="LLM_UNAVAILABLE",
+            detail={"provider": provider.provider, "reason": provider.detail},
         )
 
     svc = ExtractionService()

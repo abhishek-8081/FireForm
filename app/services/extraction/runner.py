@@ -6,8 +6,8 @@ misses again, the salvage pass keeps whatever fields do validate and throws
 away only the offending ones, because one invented enum in a sub-field nobody
 mentioned should not cost a whole section. Nothing is ever guessed in the other
 direction: fields only come out. Chunks run in waves by tier so the fields a
-form needs land first, and inside a wave they run in parallel up to the Ollama
-concurrency limit.
+form needs land first, and inside a wave they run in parallel up to the
+provider's concurrency limit.
 """
 
 from __future__ import annotations
@@ -22,12 +22,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app.core.config import EXTRACTION_CHUNK_RETRIES, EXTRACTION_MAX_PARALLEL
 from app.core.logging import get_logger
-from app.services.extraction.client import (
-    ChunkCallError,
-    ChunkTimeoutError,
-    LLMUnavailableError,
-    call_chunk,
-)
+from app.services import llm
 from app.services.extraction.prompts import build_prompt
 from app.services.extraction.registry import ChunkSpec
 
@@ -165,6 +160,7 @@ def extract_chunk(
     text: str,
     context_lines: list[str],
     model: str | None = None,
+    gate: llm.RateLimitGate | None = None,
 ) -> ChunkResult:
     """Extract one chunk: retry a rejected answer once, then salvage what validates."""
     result = ChunkResult(name=spec.name)
@@ -176,13 +172,15 @@ def extract_chunk(
         last_try = attempt == attempts - 1
         prompt = build_prompt(spec, text, context_lines, retry_note)
         try:
-            payload = call_chunk(prompt, model)
+            payload = llm.generate_json(prompt, model=model, gate=gate)
             result.value = _validate(spec, payload)
             result.error = None
             return result
-        except LLMUnavailableError:
+        except (llm.LLMUnavailableError, llm.LLMRateLimitError, llm.LLMAuthError):
+            # Nothing chunk-specific about these. Every other chunk would hit
+            # the same wall, so the run gives up rather than working through it.
             raise
-        except ChunkTimeoutError as exc:
+        except llm.LLMTimeoutError as exc:
             result.error = str(exc)
             logger.warning("chunk %s timed out, not retrying: %s", spec.name, exc)
             break
@@ -207,7 +205,7 @@ def extract_chunk(
                 return result
             except (ValidationError, ValueError):
                 logger.warning("chunk %s could not be salvaged", spec.name)
-        except (ChunkCallError, ValueError) as exc:
+        except (llm.LLMResponseError, ValueError) as exc:
             retry_note = _failure_reason(exc)
             result.error = retry_note
             logger.warning(
@@ -238,13 +236,16 @@ def run_chunks(
     """
     results: list[ChunkResult] = []
     workers = max(1, EXTRACTION_MAX_PARALLEL)
+    # Shared by every chunk in this run. The first one to exhaust its rate limit
+    # retries trips it, and the rest fail immediately instead of each waiting.
+    gate = llm.RateLimitGate()
 
     for tier, group in groupby(specs, key=lambda s: s.tier):
         wave = list(group)
         logger.info("extracting %s wave: %s", tier.value, ", ".join(s.name for s in wave))
         with ThreadPoolExecutor(max_workers=workers) as pool:
             wave_results = list(
-                pool.map(lambda spec: extract_chunk(spec, text, context_lines, model), wave)
+                pool.map(lambda spec: extract_chunk(spec, text, context_lines, model, gate), wave)
             )
         results.extend(wave_results)
         if on_wave is not None:

@@ -1,8 +1,9 @@
 """Tests for POST /api/v1/extract/{input_id} and GET /api/v1/extract/{extract_id}.
 
-Endpoint tests only — dispatch is mocked (no broker) and Ollama availability is
-patched. The real chunked worker lands in #630, so there is no task unit here;
-the stub task is exercised indirectly by the POST dispatch assertions.
+Endpoint tests only — dispatch is mocked (no broker) and the LLM provider's
+health is patched. The real chunked worker lands in #630, so there is no task
+unit here; the stub task is exercised indirectly by the POST dispatch
+assertions.
 """
 
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 from app.api.schemas.enums import ExtractionStatus, InputStatus, InputType, ReportStatus
+from app.services.llm.models import ProviderHealth
 from app.db.repositories import (
     create_extraction,
     create_incident,
@@ -33,6 +35,19 @@ _CONTRACT = {
 # ---------------------------------------------------------------------------
 # Seed helpers
 # ---------------------------------------------------------------------------
+
+def _provider(up: bool) -> ProviderHealth:
+    """The provider health the route checks before it accepts a run."""
+    return ProviderHealth(
+        provider="ollama",
+        label="Ollama",
+        model="qwen2.5:1.5b",
+        external=False,
+        status="healthy" if up else "unhealthy",
+        probed=True,
+        detail=None if up else "connection refused",
+    )
+
 
 def _ready_input(db, status=InputStatus.ready) -> Input:
     now = datetime.now(timezone.utc)
@@ -81,7 +96,7 @@ class TestCreateExtraction:
     def _post(self, client, input_id, body=None, ollama_up=True, celery_id="celery-extract-001"):
         mock_result = MagicMock()
         mock_result.id = celery_id
-        with patch("app.api.routes.extraction.check_ollama_available", return_value=ollama_up), \
+        with patch("app.api.routes.extraction.llm.health", return_value=_provider(ollama_up)), \
              patch("app.services.extraction.service.extract_task") as mock_task:
             mock_task.delay.return_value = mock_result
             resp = client.post(f"{POST_URL}/{input_id}", json=body)
@@ -165,7 +180,7 @@ class TestCreateExtraction:
         # the error handler must still render a 422 rather than blow up on
         # serializing bytes.
         inp = _ready_input(db)
-        with patch("app.api.routes.extraction.check_ollama_available", return_value=True):
+        with patch("app.api.routes.extraction.llm.health", return_value=_provider(True)):
             resp = client.post(
                 f"{POST_URL}/{inp.input_id}",
                 content=b"{}",

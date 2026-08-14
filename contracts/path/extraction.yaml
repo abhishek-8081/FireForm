@@ -13,10 +13,15 @@ extract_by_input:
       Extracts the narrative (from a previously submitted input) into the
       incident contract. The contract is far too large for one LLM
       call, so the extractor splits it into small field groups and runs them
-      as parallel calls against the local Ollama instance (bounded by
-      OLLAMA_NUM_PARALLEL and available RAM), validates each group against
+      as parallel calls against the configured provider (bounded by
+      LLM_MAX_PARALLEL and available RAM), validates each group against
       the schema with per-group retry, and stitches the validated pieces
       into one document.
+
+      A provider that rate limits the run is retried, and if the limit does not
+      lift the extraction is recorded as failed with error_type
+      LLM_RATE_LIMITED. Everything the earlier waves already produced is kept
+      in partial_result rather than thrown away.
 
       Open fields from registered templates (source=open) are extracted in
       the same run as extra groups, so their values reach the review screen
@@ -107,17 +112,18 @@ extract_by_input:
                   detail:
                     existing_extract_id: "550e8400-e29b-41d4-a716-446655440020"
       "503":
-        description: Ollama LLM service unavailable
+        description: The configured LLM provider is unavailable
         content:
           application/json:
             schema:
               $ref: "../schemas/common.yaml#/ErrorResponse"
             example:
               error_code: "LLM_UNAVAILABLE"
-              message: "Ollama LLM service is not available"
+              message: "The Ollama LLM service is not available"
               retry_after_seconds: 30
               detail:
-                ollama_status: "connection_refused"
+                provider: "ollama"
+                reason: "connection refused"
 
 extract_by_id:
   get:

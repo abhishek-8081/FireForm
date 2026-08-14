@@ -49,6 +49,39 @@ OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "600"))
 OLLAMA_MAX_TOKENS = int(os.getenv("OLLAMA_MAX_TOKENS", "1200"))
 WHISPER_HOST = os.getenv("WHISPER_HOST", "http://localhost:9000").rstrip("/")
 
+# --- LLM provider ---------------------------------------------------------
+# Which backend answers prompts, one per deployment. "custom" points at any
+# endpoint speaking the OpenAI chat completions API and needs LLM_BASE_URL.
+# The OLLAMA_* settings above stay the Ollama provider's defaults, so an
+# existing .env keeps working untouched. Meanings are documented in
+# docker/.env.example.
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
+LLM_MODEL = os.getenv("LLM_MODEL", "").strip()
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "").strip().rstrip("/")
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
+
+LLM_EXTRA_HEADERS = os.getenv("LLM_EXTRA_HEADERS", "").strip()
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", str(OLLAMA_TIMEOUT)))
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", str(OLLAMA_MAX_TOKENS)))
+
+# Hosted providers mean incident narratives leave the department's hardware,
+# which is the one thing FireForm promises will not happen. They refuse to
+# start until this is switched on deliberately.
+LLM_ALLOW_EXTERNAL = os.getenv("LLM_ALLOW_EXTERNAL", "false").strip().lower() == "true"
+
+# A 429 is the provider asking us to wait, so it is worth waiting out. Anything
+# still limited after all of these tries is a quota problem no retry fixes.
+LLM_RATE_LIMIT_RETRIES = int(os.getenv("LLM_RATE_LIMIT_RETRIES", "10"))
+LLM_RATE_LIMIT_WAIT_SECONDS = float(os.getenv("LLM_RATE_LIMIT_WAIT_SECONDS", "10"))
+LLM_RATE_LIMIT_MAX_WAIT_SECONDS = float(os.getenv("LLM_RATE_LIMIT_MAX_WAIT_SECONDS", "60"))
+LLM_RESPECT_RETRY_AFTER = os.getenv("LLM_RESPECT_RETRY_AFTER", "true").strip().lower() == "true"
+LLM_SERVER_RETRIES = int(os.getenv("LLM_SERVER_RETRIES", "2"))
+LLM_SERVER_RETRY_WAIT_SECONDS = float(os.getenv("LLM_SERVER_RETRY_WAIT_SECONDS", "2"))
+
 # --- Celery / Redis -------------------------------------------------------
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
@@ -78,10 +111,12 @@ EXTRACTION_POLL_INTERVAL_SECONDS = 5
 ESTIMATED_EXTRACTION_SECONDS = int(os.getenv("ESTIMATED_EXTRACTION_SECONDS", "60"))
 
 # --- Extraction worker ----------------------------------------------------
-# How many chunk prompts run against Ollama at once. Ollama serves
-# OLLAMA_NUM_PARALLEL requests concurrently and queues the rest, so going wider
-# than the server buys nothing but memory pressure.
-EXTRACTION_MAX_PARALLEL = int(os.getenv("OLLAMA_NUM_PARALLEL", "4"))
+# How many chunk prompts run at once. A local server queues whatever it cannot
+# serve concurrently, so going wider than it buys nothing but memory pressure.
+# A hosted provider will rate limit instead, which the retry policy absorbs.
+EXTRACTION_MAX_PARALLEL = int(
+    os.getenv("LLM_MAX_PARALLEL", os.getenv("OLLAMA_NUM_PARALLEL", "4"))
+)
 
 # Extra attempts after a chunk's first result fails validation. One retry, with
 # the rejected value named in the prompt; a chunk that misses twice is left for
