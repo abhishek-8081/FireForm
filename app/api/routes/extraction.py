@@ -10,6 +10,9 @@ from app.api.schemas.extraction import (
     ExtractionJobResponse,
     ExtractionProcessing,
     ExtractionRequest,
+    ReadinessMatrix,
+    ValidationRequest,
+    ValidationResult,
 )
 from app.api.schemas.incident_contract import IncidentContract
 from app.core.config import (
@@ -22,10 +25,13 @@ from app.db.repositories import (
     get_extraction_by_input,
     get_incident_by_extract,
     get_input,
+    list_form_templates,
 )
 from app.models import Extraction, Incident
 from app.services.extraction.service import ExtractionService
+from app.services.extraction_readiness import readiness_matrix, validate_template
 from app.services.extraction_review import ExtractionReviewService, load_for_review
+from app.services.form_templates import require_template
 from app.services import llm
 
 router = APIRouter(prefix="/extract", tags=["extraction"])
@@ -169,3 +175,23 @@ def update_extraction(
         db, extraction, incident, patch
     )
     return _completed_response(extraction, incident)
+
+
+@router.get("/{extract_id}/readiness", response_model=ReadinessMatrix)
+def get_readiness(extract_id: UUID, db: Session = Depends(get_db)):
+    extraction = _load_extraction(db, extract_id)
+    incident = load_for_review(extraction, get_incident_by_extract(db, extract_id))
+
+    return readiness_matrix(extraction, incident, list_form_templates(db))
+
+
+@router.post("/{extract_id}/validate", response_model=ValidationResult)
+def validate_extraction(
+    extract_id: UUID,
+    body: ValidationRequest,
+    db: Session = Depends(get_db),
+):
+    extraction = _load_extraction(db, extract_id)
+    incident = load_for_review(extraction, get_incident_by_extract(db, extract_id))
+
+    return validate_template(extraction, incident, require_template(db, body.template_id))

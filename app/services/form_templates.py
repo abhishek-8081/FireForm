@@ -87,7 +87,7 @@ def _to_detail(template: FormTemplate) -> TemplateDetail:
     )
 
 
-def _require_template(db: Session, template_id: UUID) -> FormTemplate:
+def require_template(db: Session, template_id: UUID) -> FormTemplate:
     template = get_form_template(db, template_id)
     if not template:
         raise AppError(
@@ -126,13 +126,13 @@ def create_template(db: Session, body: CreateTemplateRequest) -> TemplateDetail:
 
 
 def get_template(db: Session, template_id: UUID) -> TemplateDetail:
-    return _to_detail(_require_template(db, template_id))
+    return _to_detail(require_template(db, template_id))
 
 
 def replace_template(
     db: Session, template_id: UUID, body: CreateTemplateRequest
 ) -> TemplateDetail:
-    template = _require_template(db, template_id)
+    template = require_template(db, template_id)
 
     # form_type is unique in the DB, so a rename onto a form_type another
     # template already holds has to be answered here. Without this the insert
@@ -168,7 +168,7 @@ def resolve_template_pdf(db: Session, template_id: UUID) -> Path:
     `pdf_template_ref` is client-supplied, so the resolved path is checked to
     still sit under the data directory before anything is served from it.
     """
-    template = _require_template(db, template_id)
+    template = require_template(db, template_id)
     if not template.pdf_template_ref:
         raise AppError(
             f"Template {template_id} has no source PDF",
@@ -294,7 +294,7 @@ def draft_response(upload: TemplateUpload, job: Job | None) -> TemplateDraftAcce
 def get_template_fields(
     db: Session, template_id: UUID, required_only: bool
 ) -> TemplateFieldsResponse:
-    template = _require_template(db, template_id)
+    template = require_template(db, template_id)
 
     fields = [TemplateField(**f) for f in template.fields]
     required = [f for f in fields if f.required]

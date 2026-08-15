@@ -419,3 +419,12 @@ validate:
             example:
               error_code: "TEMPLATE_NOT_FOUND"
               message: "Template with ID 550e8400-e29b-41d4-a716-446655440099 not found"
+      "409":
+        description: Extraction not yet completed
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+            example:
+              error_code: "EXTRACT_NOT_COMPLETED"
+              message: "Extraction is still processing. Wait until status is 'completed'."
