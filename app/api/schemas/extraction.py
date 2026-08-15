@@ -112,6 +112,12 @@ class FieldGap(BaseModel):
     description: str | None = None
 
 
+class ValidationRequest(BaseModel):
+    """Which registered template to check the extraction against."""
+
+    template_id: UUID
+
+
 class ValidationResult(BaseModel):
     valid: bool
     template_id: UUID
