@@ -253,8 +253,9 @@ def test_forms_columns(alembic_cfg, alembic_engine):
         "form_id",
         "form_type",
         "status",
-        "extract_id",
+        "template_id",
         "incident_id",
+        "batch_id",
         "job_id",
         "completed_at",
         "pdf_ready",
@@ -272,9 +273,10 @@ def test_forms_fk(alembic_cfg, alembic_engine):
 
     inspector = inspect(alembic_engine)
     fks = {fk["referred_table"]: fk for fk in inspector.get_foreign_keys("forms")}
-    # extract_id → extractions and incident_id → incidents; job_id has NO FK constraint
-    assert "extractions" in fks
-    assert fks["extractions"]["referred_columns"] == ["extract_id"]
+    # template_id → form_templates and incident_id → incidents; job_id and
+    # batch_id have NO FK constraint (batch_id is a grouping key, no Batch table)
+    assert "form_templates" in fks
+    assert fks["form_templates"]["referred_columns"] == ["template_id"]
     assert "incidents" in fks
     assert fks["incidents"]["referred_columns"] == ["incident_id"]
     assert len(fks) == 2
@@ -403,9 +405,13 @@ def test_template_uploads_no_fk(alembic_cfg, alembic_engine):
 
 
 def test_downgrade_004(alembic_cfg, alembic_engine):
-    """Downgrade by one step removes both 004 tables, leaving 003 intact."""
+    """Downgrade to 003 removes both 004 tables, leaving 003 intact.
+
+    Targets the "003" revision explicitly rather than "-1": 005 now sits on
+    top of head, so a relative one-step downgrade only undoes 005, not 004.
+    """
     command.upgrade(alembic_cfg, "head")
-    command.downgrade(alembic_cfg, "-1")
+    command.downgrade(alembic_cfg, "003")
 
     inspector = inspect(alembic_engine)
     tables = inspector.get_table_names()
@@ -414,3 +420,74 @@ def test_downgrade_004(alembic_cfg, alembic_engine):
     assert "inputs" in tables
     assert "forms" in tables
     assert "reports" in tables
+
+
+# ---------------------------------------------------------------------------
+# 005 — forms: template_id/incident_id/batch_id, drop extract_id
+# ---------------------------------------------------------------------------
+
+def test_forms_template_id_not_nullable(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"]: c for c in inspector.get_columns("forms")}
+    assert not columns["template_id"]["nullable"]
+
+
+def test_forms_incident_id_not_nullable(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"]: c for c in inspector.get_columns("forms")}
+    assert not columns["incident_id"]["nullable"]
+
+
+def test_forms_batch_id_nullable_no_fk(alembic_cfg, alembic_engine):
+    """batch_id is a plain grouping key — nullable, no FK (no Batch table)."""
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"]: c for c in inspector.get_columns("forms")}
+    assert columns["batch_id"]["nullable"]
+    referred_tables = {fk["referred_table"] for fk in inspector.get_foreign_keys("forms")}
+    assert "batches" not in referred_tables
+
+
+def test_forms_extract_id_removed(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"] for c in inspector.get_columns("forms")}
+    assert "extract_id" not in columns
+
+
+def test_downgrade_005(alembic_cfg, alembic_engine):
+    """Downgrade by one step from head restores 004's forms shape."""
+    command.upgrade(alembic_cfg, "head")
+    command.downgrade(alembic_cfg, "-1")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"]: c for c in inspector.get_columns("forms")}
+    assert "extract_id" in columns
+    assert "template_id" not in columns
+    assert "batch_id" not in columns
+    assert columns["incident_id"]["nullable"]
+
+    fks = {fk["referred_table"] for fk in inspector.get_foreign_keys("forms")}
+    assert "extractions" in fks
+    assert "form_templates" not in fks
+
+    # form_templates itself is untouched — only introduced by 004, not by 005
+    assert "form_templates" in inspector.get_table_names()
+
+
+def test_round_trip_005(alembic_cfg, alembic_engine):
+    command.upgrade(alembic_cfg, "head")
+    command.downgrade(alembic_cfg, "-1")
+    command.upgrade(alembic_cfg, "head")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"] for c in inspector.get_columns("forms")}
+    assert "template_id" in columns
+    assert "batch_id" in columns
+    assert "extract_id" not in columns

@@ -6,6 +6,7 @@ from app.models import (
     Template,
     FormSubmission,
     FormTemplate,
+    Form,
     Job,
     Input,
     Extraction,
@@ -112,6 +113,32 @@ def get_form_submission(session: Session, submission_id: int) -> FormSubmission 
 def delete_form_submission(session: Session, submission: FormSubmission) -> None:
     session.delete(submission)
     session.commit()
+
+
+# Forms (contract Layer 3 — v1 Form model, distinct from the legacy FormSubmission)
+def create_generated_form(session: Session, form: Form) -> Form:
+    session.add(form)
+    session.commit()
+    session.refresh(form)
+    return form
+
+
+def get_form(session: Session, form_id: UUID) -> Form | None:
+    return session.get(Form, form_id)
+
+
+def list_forms_by_batch(session: Session, batch_id: UUID) -> list[Form]:
+    statement = select(Form).where(Form.batch_id == batch_id).order_by(
+        Form.created_at, Form.form_id
+    )
+    return list(session.exec(statement))
+
+
+def update_form(session: Session, form: Form) -> Form:
+    session.add(form)
+    session.commit()
+    session.refresh(form)
+    return form
 
 
 # Inputs

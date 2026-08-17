@@ -160,8 +160,11 @@ class Form(SQLModel, table=True):
     status: FormStatus = Field(
         default=FormStatus.queued, sa_column=Column(AutoString, nullable=False)
     )
-    extract_id: UUID = Field(foreign_key="extractions.extract_id")
-    incident_id: UUID | None = Field(default=None, foreign_key="incidents.incident_id")
+    template_id: UUID = Field(foreign_key="form_templates.template_id")
+    incident_id: UUID = Field(foreign_key="incidents.incident_id")
+    # Grouping key for a batch generate request. No Batch table — batch status
+    # is derived on the fly from the Form rows sharing this id.
+    batch_id: UUID | None = None
     # Plain UUID, no FK constraint — pending contract Job model resolution (#544 decision A).
     job_id: UUID | None = None
     completed_at: datetime | None = None

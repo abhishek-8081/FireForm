@@ -23,7 +23,7 @@ from app.api.schemas.enums import (
     PeriodType,
     ReportStatus,
 )
-from app.models import Extraction, Form, Incident, Input, Report
+from app.models import Extraction, Form, FormTemplate, Incident, Input, Report
 
 
 # ---------------------------------------------------------------------------
@@ -41,6 +41,26 @@ def _input(db: Session, **kwargs) -> Input:
 
 def _extraction(db: Session, input_id: UUID, **kwargs) -> "Extraction":
     row = Extraction(input_id=input_id, **kwargs)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _incident(db: Session, **kwargs) -> Incident:
+    inp = _input(db)
+    ext = _extraction(db, inp.input_id)
+    defaults = dict(extract_id=ext.extract_id)
+    row = Incident(**{**defaults, **kwargs})
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _form_template(db: Session, **kwargs) -> FormTemplate:
+    defaults = dict(form_type=f"test_form_{uuid4().hex[:8]}", display_name="Test Form", fields=[])
+    row = FormTemplate(**{**defaults, **kwargs})
     db.add(row)
     db.commit()
     db.refresh(row)
@@ -293,10 +313,11 @@ class TestIncidentModel:
 class TestFormModel:
 
     def _make(self, db, **kwargs):
-        inp = _input(db)
-        ext = _extraction(db, inp.input_id)
+        template = _form_template(db)
+        incident = _incident(db)
         defaults = dict(
-            extract_id=ext.extract_id,
+            template_id=template.template_id,
+            incident_id=incident.incident_id,
             form_type=FormType.nfirs_basic,
         )
         row = Form(**{**defaults, **kwargs})
@@ -311,7 +332,9 @@ class TestFormModel:
         assert row.status == FormStatus.queued
         assert row.pdf_ready is False
         assert row.json_ready is False
-        assert row.incident_id is None
+        assert isinstance(row.template_id, UUID)
+        assert isinstance(row.incident_id, UUID)
+        assert row.batch_id is None
         assert row.job_id is None
         assert row.completed_at is None
 
@@ -335,15 +358,11 @@ class TestFormModel:
         assert fetched.json_data["FDID"] == "CA99901"
 
     def test_incident_fk_links_correctly(self, db):
-        inp = _input(db)
-        ext = _extraction(db, inp.input_id)
-        incident = Incident(extract_id=ext.extract_id)
-        db.add(incident)
-        db.commit()
-        db.refresh(incident)
+        template = _form_template(db)
+        incident = _incident(db)
 
         form = Form(
-            extract_id=ext.extract_id,
+            template_id=template.template_id,
             form_type=FormType.neris,
             incident_id=incident.incident_id,
         )
@@ -351,6 +370,27 @@ class TestFormModel:
         db.commit()
         db.refresh(form)
         assert form.incident_id == incident.incident_id
+
+    def test_template_fk_links_correctly(self, db):
+        template = _form_template(db)
+        incident = _incident(db)
+
+        form = Form(
+            template_id=template.template_id,
+            form_type=FormType.neris,
+            incident_id=incident.incident_id,
+        )
+        db.add(form)
+        db.commit()
+        db.refresh(form)
+        assert form.template_id == template.template_id
+
+    def test_batch_id_roundtrip(self, db):
+        """batch_id is a plain UUID grouping key — no Batch table, no FK."""
+        batch_id = uuid4()
+        row = self._make(db, batch_id=batch_id)
+        fetched = db.get(Form, row.form_id)
+        assert fetched.batch_id == batch_id
 
     def test_job_id_stored_without_fk(self, db):
         """job_id is a plain UUID — can store any UUID without a FK constraint."""
@@ -360,10 +400,14 @@ class TestFormModel:
         assert fetched.job_id == arbitrary_uuid
 
     def test_all_form_types_accepted(self, db):
-        inp = _input(db)
-        ext = _extraction(db, inp.input_id)
+        template = _form_template(db)
+        incident = _incident(db)
         for ft in FormType:
-            form = Form(extract_id=ext.extract_id, form_type=ft)
+            form = Form(
+                template_id=template.template_id,
+                incident_id=incident.incident_id,
+                form_type=ft,
+            )
             db.add(form)
         db.commit()
         results = db.exec(select(Form)).all()
